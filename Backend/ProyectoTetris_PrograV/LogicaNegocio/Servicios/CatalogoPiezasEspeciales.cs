@@ -21,7 +21,7 @@ public class CatalogoPiezasEspeciales : ICatalogoPiezasEspeciales
     }
 
     // TiposPieza no tiene columna EliminaFila. Un tipo elimina fila cuando su código contiene "FILA"
-    // (por ejemplo ELIMINA_FILA, creado por docs/sql/02_pieza_elimina_fila.sql).
+    // (FILA en el script 02; también se conservan alias anteriores que contengan FILA).
     private static bool EsEliminaFila(string codigo)
     {
         return codigo.Contains("FILA", StringComparison.OrdinalIgnoreCase);

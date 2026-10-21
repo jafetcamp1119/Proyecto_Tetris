@@ -3,8 +3,12 @@ using AccesoDatos.Contexto;
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.Juego;
+using Dominio.InterfazAD;
+using Dominio.InterfazJuego;
+using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 internal static class PruebasSql
 {
@@ -16,6 +20,7 @@ internal static class PruebasSql
         var prefijo = "PruebaArq_" + Guid.NewGuid().ToString("N")[..10];
         try
         {
+            VerificarCatalogoReal(cadena);
             var usuarios = Enumerable.Range(
                 1,
                 4).Select(i => new Usuario { NombreUsuario = prefijo + i, Correo = prefijo + i + "@example.com", PasswordHash = "SoloParaPruebaTransaccional", Activo = true, FechaRegistro = DateTime.UtcNow }).ToArray();
@@ -155,5 +160,52 @@ internal static class PruebasSql
             var quedan = await db.Usuarios.AnyAsync(u => u.NombreUsuario.StartsWith(prefijo));
             Console.WriteLine(quedan ? "ERROR: revisar limpieza de usuarios de prueba." : "ROLLBACK correcto: no quedaron registros de prueba.");
         }
+    }
+
+    private static void VerificarCatalogoReal(string cadena)
+    {
+        var servicios = new ServiceCollection();
+        servicios.AddLogging();
+        servicios.AddDbContext<TetrisDBContext>(opciones =>
+        {
+            opciones.UseSqlServer(cadena);
+        });
+        servicios.AddScoped<IUnidadTrabajoEF, UnidadTrabajoEF>();
+        servicios.AddSingleton<ICatalogoPiezasEspeciales, CatalogoPiezasEspeciales>();
+        using var proveedor = servicios.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        var catalogo = proveedor.GetRequiredService<ICatalogoPiezasEspeciales>();
+        var respuesta = catalogo.ObtenerActivas();
+
+        if (!respuesta.Success)
+        {
+            throw new Exception(respuesta.Error);
+        }
+
+        var efectos = respuesta.Data!.Select(EfectosEspeciales.Identificar).ToHashSet();
+        var esperados = Enum.GetValues<EfectoEspecial>().Where(efecto => efecto != EfectoEspecial.Ninguno);
+
+        if (esperados.Any(efecto => !efectos.Contains(efecto)))
+        {
+            throw new Exception("El catálogo SQL activo no coincide con los siete efectos del motor.");
+        }
+
+        var salas = new SalaLJ(new MotorJuego(), new OpcionesPausa(), catalogo);
+        var sala = salas.Crear(1, "Prueba catálogo", new TCrearSala
+        {
+            Modo = ModoJuego.Compartido,
+            PiezasEspeciales = new TConfiguracionPiezas
+            {
+                Activas = true,
+                Probabilidad = 100,
+                TiposPermitidos = ["BARREDORA"]
+            }
+        });
+
+        if (!sala.Success || !sala.Data!.PiezasEspeciales.TiposPermitidos!.SequenceEqual(new[] { "BARREDORA" }))
+        {
+            throw new Exception("La sala no pudo seleccionar Barredora desde el catálogo SQL real.");
+        }
+
+        Console.WriteLine("OK SQL: catálogo real, entidades EF, siete efectos y selección de Barredora por código.");
     }
 }

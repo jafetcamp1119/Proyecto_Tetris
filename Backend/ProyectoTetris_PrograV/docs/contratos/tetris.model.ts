@@ -36,11 +36,52 @@ export type ModoJuego = 'Individual' | 'Compartido' | 'Competitivo';
 export type EstadoSala = 'Esperando' | 'EnCurso' | 'Finalizada' | 'Cancelada';
 export type Movimiento = 'Izquierda' | 'Derecha' | 'Rotar' | 'Bajar' | 'Caer';
 
-// El cliente solo envía el interruptor y el porcentaje. El servidor decide qué tipos existen y sortea cada pieza.
+// El servidor valida los códigos contra el catálogo activo y sortea cada pieza.
 export interface IConfiguracionPiezas {
   activas: boolean;
   // De 1 a 100 cuando activas es true; se ignora cuando es false.
   probabilidad: number;
+  // Omitido o null: todos los activos. Vacío se rechaza al activar especiales.
+  tiposPermitidos?: string[] | null;
+}
+
+// GET /api/salas/tipos-especiales -> IRespuesta<ITipoPiezaEspecial[]> (requiere sesión).
+export interface ITipoPiezaEspecial {
+  tipoPiezaId: number;
+  codigo: string;
+  nombre: string;
+  eliminaColumna: boolean;
+  eliminaFila: boolean;
+}
+
+export type EfectoEspecial = 'Ninguno' | 'EliminarFila' | 'EliminarColumna' | 'Confusion'
+  | 'Acelerador' | 'Bomba' | 'Barredora' | 'DoblePuntuacion';
+
+export interface IEfectoTemporal {
+  usuarioId: number;
+  atacanteId: number;
+  tipo: EfectoEspecial;
+  inicioUtc: string;
+  finUtc: string;
+  milisegundosRestantes: number;
+  activo: boolean;
+  motivoFin: 'JugadorEliminado' | 'PartidaTerminada' | 'TiempoAgotado' | null;
+  factorVelocidad: number;
+}
+
+export interface IActivacionEspecial {
+  // Barredora usa codigo BARREDORA, tipo Barredora y estado Aplicado.
+  // celdasEliminadas contiene las coordenadas de la mitad superior que estaban ocupadas.
+  secuencia: number;
+  codigo: string;
+  atacanteId: number;
+  afectadoId: number | null;
+  ahoraServidorUtc: string;
+  puntosJugada: number;
+  celdasEliminadas: ICelda[];
+  // PendienteDefinicion se conserva para compatibilidad; Barredora ya está implementada.
+  estado: 'Aplicado' | 'SinObjetivo' | 'PendienteDefinicion';
+  tipo: EfectoEspecial;
 }
 
 export type PiezaNormal = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
@@ -177,6 +218,9 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
+  // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
+  efectos: IEfectoTemporal[];
+  ultimoEfecto: IActivacionEspecial | null;
   id: string;
   codigo: string;
   creadorId: number;

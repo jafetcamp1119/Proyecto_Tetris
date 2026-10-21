@@ -47,6 +47,19 @@ public class SalasController : ControllerBase
         return Responder(salas.Obtener(id, UsuarioId));
     }
 
+    [HttpGet("tipos-especiales")]
+    public IActionResult TiposEspeciales([FromServices] ICatalogoPiezasEspeciales catalogo)
+    {
+        var respuesta = catalogo.ObtenerActivas();
+
+        if (!respuesta.Success)
+        {
+            return BadRequest(respuesta);
+        }
+
+        return Ok(respuesta);
+    }
+
     [HttpPut("{id:guid}/piezas-especiales")]
     public async Task<IActionResult> ConfigurarPiezas(Guid id, TConfiguracionPiezas datos)
     {

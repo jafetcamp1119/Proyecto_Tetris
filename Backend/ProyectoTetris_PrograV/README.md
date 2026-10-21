@@ -61,3 +61,9 @@ docs/CONFIGURACION_PARTIDA.md (pieza que elimina fila, piezas normales, velocida
 
 
 Reglas definitivas, contratos, pruebas y pendientes: [docs/ACTUALIZACION_DEFINITIVA.md](docs/ACTUALIZACION_DEFINITIVA.md).
+
+Piezas especiales completadas, duraciones, ataques, contratos y script SQL:
+[docs/EFECTOS_ESPECIALES.md](docs/EFECTOS_ESPECIALES.md).
+
+Barredora y catálogo SQL verificado y actualizado:
+[docs/BARREDORA_SQL.md](docs/BARREDORA_SQL.md).

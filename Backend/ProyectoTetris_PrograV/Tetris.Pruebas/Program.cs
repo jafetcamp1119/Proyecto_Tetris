@@ -401,6 +401,7 @@ Prueba("El cliente C# conserva el contrato de login y envía Bearer", () =>
 PruebasDefinitivas.Agregar(Prueba);
 PruebasReglasNuevas.Agregar(Prueba);
 PruebasConfiguracionPartida.Agregar(Prueba);
+PruebasEfectosEspeciales.Agregar(Prueba);
 var fallos = 0;
 foreach (var prueba in pruebas)
 {

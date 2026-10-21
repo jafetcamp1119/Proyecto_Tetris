@@ -47,9 +47,10 @@ completa, no de un tablero: todos los jugadores de la sala juegan con las mismas
   línea (nunca se elimina ni se puntúa dos veces). Las demás filas que queden completas se puntúan como siempre.
 - **Cómo se identifica el tipo:** la tabla `TiposPieza` solo tiene la columna `EliminaColumna`, así que
   el servidor considera que un tipo elimina fila cuando su `Codigo` contiene `FILA`
-  (por ejemplo `ELIMINA_FILA`). Para crear ese tipo ejecuta una vez `docs/sql/02_pieza_elimina_fila.sql`
+  (por ejemplo `FILA`). Para crear ese tipo ejecuta una vez `docs/sql/02_pieza_elimina_fila.sql`
   (agrega una fila a `TiposPieza`; no borra ni cambia nada y se puede repetir sin duplicar).
-  **El script no se pudo probar aquí** (no hay SQL Server); revísalo antes de ejecutarlo.
+  El script fue corregido para `Codigo nvarchar(10)`, probado con rollback y aplicado en
+  `JAFET\SQLEXPRESS / TetrisDB`. Consulta `docs/BARREDORA_SQL.md` antes de trasladarlo a otra base.
 - Se activa con el mismo interruptor y porcentaje de las piezas especiales. Todos los tipos activos
   salen con la misma probabilidad.
 

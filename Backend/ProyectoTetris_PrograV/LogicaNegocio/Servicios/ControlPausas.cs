@@ -175,8 +175,15 @@ internal sealed class ControlPausas
         foreach (var jugador in sala.Jugadores)
         {
             jugador.UltimaCaida = jugador.UltimaCaida.Add(duracion);
+            for (var indice = 0; indice < jugador.Efectos.Count; indice++)
+            {
+                var efecto = jugador.Efectos[indice];
 
-
+                if (efecto.Activo)
+                {
+                    jugador.Efectos[indice] = efecto with { FinUtc = efecto.FinUtc.Add(duracion) };
+                }
+            }
         }
     }
 

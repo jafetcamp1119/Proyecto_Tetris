@@ -21,6 +21,8 @@ public sealed class TableroJuego
 
     public bool Perdido { get; internal set; }
 
+    public bool EsCompartido { get; internal set; }
+
     // Reglas de piezas especiales de esta partida y tipo especial de la pieza activa (null si es normal).
     // Se guardan en el tablero para que una reconexión no vuelva a sortear la pieza.
     public ConfiguracionPiezas Piezas { get; internal set; } = ConfiguracionPiezas.SoloNormales;
@@ -36,6 +38,10 @@ public sealed class TableroJuego
     public int LineasUltimoEvento { get; internal set; }
 
     public string? EspecialUltimoEvento { get; internal set; }
+
+    public EfectoEspecial EfectoUltimoEvento { get; internal set; }
+
+    public (int Fila, int Columna)[] CeldasEliminadasEspecial { get; internal set; } = [];
 }
 
 // Hechos de una acción del motor que el frontend puede acompañar con un sonido.

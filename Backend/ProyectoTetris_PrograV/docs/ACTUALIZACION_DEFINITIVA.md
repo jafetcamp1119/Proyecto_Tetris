@@ -100,6 +100,12 @@ la corona tras reiniciar, porque las salas se cancelan y no se recuperan.
 
 ## Efectos especiales existentes y pendientes
 
+**Actualización posterior:** los efectos temporales, bomba y doble puntuación
+descritos aquí como pendientes se implementaron. El informe vigente está en
+[EFECTOS_ESPECIALES.md](EFECTOS_ESPECIALES.md). Barredora ya limpia la mitad superior del compartido;
+su implementación y la actualización real de SQL se detallan en [BARREDORA_SQL.md](BARREDORA_SQL.md).
+El resto de esta sección describe el estado anterior a esa actualización.
+
 - EliminaColumna vacía todas las columnas ocupadas por la pieza al fijarse.
 - EliminaFila elimina la fila de la celda más baja de la pieza y baja las filas superiores.
   Se identifica mediante el código que contiene FILA, conservando el contrato existente de SQL.

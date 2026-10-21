@@ -43,7 +43,19 @@ internal sealed class ProyectorSala
             ProyectarPuntos(sala.Piezas),
             sala.MetaPuntos,
             sala.MinimoVictoriasCorona,
-            sala.MotivoFin);
+            sala.MotivoFin,
+            sala.Jugadores.SelectMany(jugador => jugador.Efectos).ToArray(),
+            CopiarUltimoEfecto(sala));
+    }
+
+    private static TActivacionEspecial? CopiarUltimoEfecto(SalaMemoria sala)
+    {
+        if (sala.UltimoEfecto == null)
+        {
+            return null;
+        }
+
+        return sala.UltimoEfecto with { CeldasEliminadas = sala.UltimoEfecto.CeldasEliminadas.ToArray() };
     }
 
     private static string[] ProyectarPiezasNormales(ConfiguracionPiezas piezas)
@@ -127,7 +139,8 @@ internal sealed class ProyectorSala
         return new TConfiguracionPiezas
         {
             Activas = piezas.EspecialesActivas,
-            Probabilidad = piezas.ProbabilidadEspecial
+            Probabilidad = piezas.ProbabilidadEspecial,
+            TiposPermitidos = piezas.TiposDisponibles.Select(tipo => tipo.Codigo).ToArray()
         };
     }
 

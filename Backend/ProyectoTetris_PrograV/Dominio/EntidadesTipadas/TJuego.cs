@@ -68,11 +68,14 @@ public class TPuntosLineas
     public int CuatroLineas { get; set; } = 800;
 }
 
-// Lo único que el cliente puede elegir sobre las piezas especiales. El servidor decide
-// qué tipos existen y sortea cada pieza; el cliente nunca envía tipos ni resultados.
+// El cliente elige tipos activos del catálogo. El servidor valida la selección y sortea
+// cada pieza; el cliente nunca envía el resultado del sorteo ni un efecto a ejecutar.
 public class TConfiguracionPiezas
 {
     public bool Activas { get; set; }
+
+    // null conserva compatibilidad: todos los tipos activos del catálogo. Vacío no es válido si Activas.
+    public string[]? TiposPermitidos { get; set; }
 
     // De 1 a 100 cuando Activas es true. Se ignora cuando Activas es false.
     [Range(0, 100)]
@@ -154,7 +157,32 @@ public record TSala(
     TPuntosLineas Puntos,
     int? MetaPuntos = null,
     int? MinimoVictoriasCorona = null,
-    string? MotivoFin = null);
+    string? MotivoFin = null,
+    TEfectoTemporal[]? Efectos = null,
+    TActivacionEspecial? UltimoEfecto = null);
+
+public record TEfectoTemporal(
+    int UsuarioId,
+    int AtacanteId,
+    EfectoEspecial Tipo,
+    DateTime InicioUtc,
+    DateTime FinUtc,
+    int MilisegundosRestantes,
+    bool Activo,
+    string? MotivoFin,
+    int FactorVelocidad);
+
+// Secuencia de sala para identificar cada activación aunque la siguiente pieza tenga el mismo código.
+public record TActivacionEspecial(
+    long Secuencia,
+    string Codigo,
+    int AtacanteId,
+    int? AfectadoId,
+    DateTime AhoraServidorUtc,
+    int PuntosJugada,
+    TCelda[] CeldasEliminadas,
+    string Estado,
+    EfectoEspecial Tipo = EfectoEspecial.Ninguno);
 
 // Datos públicos de una sala del listado. No incluye códigos privados.
 public record TSalaPublica(

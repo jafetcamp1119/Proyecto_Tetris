@@ -19,6 +19,7 @@ internal sealed class JugadorSala
     public DateTime? Desconexion;
     public TableroJuego? Tablero;
     public DateTime UltimaCaida;
+    public readonly List<Dominio.EntidadesTipadas.TEfectoTemporal> Efectos = [];
 
     public JugadorSala(int id, string nombre)
     {
@@ -50,6 +51,8 @@ internal sealed class SalaMemoria
     public long Version;
     public long Revision;
     public long RevisionGuardada;
+    public long SecuenciaEspecial;
+    public Dominio.EntidadesTipadas.TActivacionEspecial? UltimoEfecto;
 
     // Privacidad: una sala privada se identifica con un código de seis caracteres generado por el servidor.
     public bool Privada;

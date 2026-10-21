@@ -74,10 +74,16 @@ internal static class PruebasHttp
         constructor.Services.AddScoped<IUsuarioLJ, UsuarioLJ>();
         constructor.Services.AddScoped<IConfiguracionLJ, ConfiguracionLJ>();
         constructor.Services.AddScoped<IResultadoLJ, ResultadoLJ>();
-        constructor.Services.AddSingleton<IMotorJuego, MotorJuego>();
+        constructor.Services.AddSingleton<IMotorJuego, MotorHttp>();
         constructor.Services.AddSingleton(new OpcionesPausa());
         constructor.Services.AddSingleton<ICatalogoPiezasEspeciales>(
-            new CatalogoFalso(new TipoPiezaEspecial(1, "COL", "Elimina columna", true)));
+            new CatalogoFalso(
+                new TipoPiezaEspecial(1, "COL", "Elimina columna", true),
+                new TipoPiezaEspecial(2, "CONFUSION", "Confusión", false),
+                new TipoPiezaEspecial(3, "ACELERADOR", "Acelerador", false),
+                new TipoPiezaEspecial(4, "BOMBA", "Bomba", false),
+                new TipoPiezaEspecial(5, "DOBLE", "Doble puntuación", false),
+                new TipoPiezaEspecial(6, "BARREDORA", "Barredora", false)));
         constructor.Services.AddSingleton<ISalaLJ, SalaLJ>();
         constructor.Services.AddSingleton<PublicadorSalas>();
 
@@ -494,6 +500,8 @@ internal static class PruebasHttp
             Verificar(activas[2].Estados.Count == estadosAntes, "el cierre retira conexiones del grupo SignalR");
             UsarSesion(0);
 
+            await VerificarEfectosAsync(aplicacion, cliente, sesiones, activas, UsarSesion, Verificar);
+
             using var cierre = await cliente.PostAsync("/api/usuarios/logout", null);
             Verificar(cierre.StatusCode == HttpStatusCode.NoContent, "logout compatible con Bearer");
 
@@ -528,6 +536,160 @@ internal static class PruebasHttp
             }
 
             await aplicacion.StopAsync();
+        }
+    }
+
+    private static async Task VerificarEfectosAsync(
+        WebApplication aplicacion,
+        HttpClient cliente,
+        IReadOnlyList<TAutenticacion> sesiones,
+        HubPrueba[] activas,
+        Action<int> UsarSesion,
+        Action<bool, string> Verificar)
+    {
+        // ---- Efectos especiales mediante REST y cuatro WebSockets reales ----
+        using var consultaTipos = await cliente.GetAsync("/api/salas/tipos-especiales");
+        var tipos = await consultaTipos.Content.ReadFromJsonAsync<Respuesta<TipoPiezaEspecial[]>>(Json);
+        Verificar(consultaTipos.IsSuccessStatusCode && tipos!.Data!.Any(tipo => tipo.Codigo == "DOBLE"),
+            "REST entrega los códigos activos para seleccionar los tipos especiales");
+
+        foreach (var codigo in new[] { "CONFUSION", "ACELERADOR", "BOMBA", "DOBLE", "BARREDORA" })
+        {
+            UsarSesion(0);
+            using var crearEfecto = await cliente.PostAsJsonAsync("/api/salas", new TCrearSala
+            {
+                Modo = ModoJuego.Compartido,
+                PiezasNormales = ["I"],
+                PiezasEspeciales = new TConfiguracionPiezas
+                {
+                    Activas = true,
+                    Probabilidad = 100,
+                    TiposPermitidos = [codigo]
+                }
+            }, Json);
+            var salaEfecto = (await crearEfecto.Content.ReadFromJsonAsync<Respuesta<TSala>>(Json))!.Data!;
+
+            for (var indice = 0; indice < 4; indice++)
+            {
+                UsarSesion(indice);
+                if (indice > 0)
+                {
+                    using var unionEfecto = await cliente.PostAsync("/api/salas/" + salaEfecto.Id + "/unirse", null);
+                    Verificar(unionEfecto.IsSuccessStatusCode, codigo + ": ingreso " + indice);
+                }
+
+                Verificar((await activas[indice].InvocarAsync("Entrar", salaEfecto.Id)).Success,
+                    codigo + ": conexión " + indice);
+                using var listoEfecto = await cliente.PutAsJsonAsync("/api/salas/" + salaEfecto.Id + "/listo", true, Json);
+                Verificar(listoEfecto.IsSuccessStatusCode, codigo + ": listo " + indice);
+            }
+
+            UsarSesion(0);
+            using var iniciarEfecto = await cliente.PostAsync("/api/salas/" + salaEfecto.Id + "/iniciar", null);
+            var generado = (await iniciarEfecto.Content.ReadFromJsonAsync<Respuesta<TSala>>(Json))!.Data!;
+            Verificar(generado.Tableros.Single().PiezaEspecial == codigo, codigo + ": generación autoritativa");
+            if (codigo == "BARREDORA")
+            {
+                // Estado de prueba colocado en el mismo tablero del motor real, antes de publicar por el hub.
+                var motorHttp = (MotorHttp)aplicacion.Services.GetRequiredService<IMotorJuego>();
+                motorHttp.PrepararBarredora();
+            }
+            var activacion = await activas[0].InvocarAsync("Mover", salaEfecto.Id,
+                new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
+            Verificar(activacion.Success && activacion.Data!.UltimoEfecto!.Codigo == codigo,
+                codigo + ": el hub devuelve la activación y los puntos de la jugada");
+            await activas[3].InvocarAsync("Entrar", salaEfecto.Id);
+            var recibido = activas[3].Estados.Last(estado => estado.Id == salaEfecto.Id);
+            Verificar(recibido.UltimoEfecto!.Codigo == codigo && recibido.Tableros.Length == 1
+                && recibido.UltimoEfecto.PuntosJugada == recibido.Jugadores[0].Puntos,
+                codigo + ": EstadoActualizado sincroniza efecto, tablero y puntuación en otro teléfono");
+
+            if (codigo == "CONFUSION" || codigo == "ACELERADOR")
+            {
+                var efecto = recibido.Efectos!.Single();
+                Verificar(efecto.UsuarioId == sesiones[1].UsuarioId && efecto.Activo
+                    && efecto.MilisegundosRestantes > 0, codigo + ": receptor y tiempo restante por SignalR");
+                if (codigo == "CONFUSION")
+                {
+                    var columna = recibido.Tableros[0].Pieza.Min(celda => celda.Columna);
+                    var invertido = await activas[1].InvocarAsync("Mover", salaEfecto.Id,
+                        new TMovimiento { Movimiento = Movimiento.Izquierda, Secuencia = 1 });
+                    Verificar(invertido.Data!.Tableros[0].Pieza.Min(celda => celda.Columna) == columna + 1,
+                        "SignalR valida confusión en el servidor");
+                }
+
+                var logicaSalas = aplicacion.Services.GetRequiredService<ISalaLJ>();
+                var publicador = aplicacion.Services.GetRequiredService<PublicadorSalas>();
+                foreach (var actualizado in logicaSalas.Avanzar(efecto.FinUtc.AddMilliseconds(1)))
+                {
+                    await publicador.PublicarEstadoAsync(actualizado);
+                }
+
+                await activas[3].InvocarAsync("Entrar", salaEfecto.Id);
+                Verificar(activas[3].Estados.Last(estado => estado.Id == salaEfecto.Id).Efectos!
+                    .Any(temporal => !temporal.Activo && temporal.MotivoFin == "TiempoAgotado"),
+                    codigo + ": vencimiento sincronizado por SignalR");
+            }
+            else if (codigo == "BOMBA")
+            {
+                Verificar(recibido.UltimoEfecto.CeldasEliminadas.Length > 0,
+                    "SignalR incluye las coordenadas de explosión de la bomba");
+            }
+            else if (codigo == "BARREDORA")
+            {
+                Verificar(recibido.UltimoEfecto.Tipo == EfectoEspecial.Barredora
+                    && recibido.UltimoEfecto.Estado == "Aplicado"
+                    && recibido.UltimoEfecto.CeldasEliminadas.Any(celda => celda.Fila == 9)
+                    && recibido.UltimoEfecto.CeldasEliminadas.All(celda => celda.Fila < 10),
+                    "SignalR identifica Barredora aplicada y sus coordenadas");
+                Verificar(recibido.Tableros[0].Celdas.Take(10).All(fila => fila.All(celda => celda == 0))
+                    && recibido.Tableros[0].Celdas[12][0] == 7 && recibido.UsuarioTurno == sesiones[1].UsuarioId,
+                    "SignalR transmite la limpieza superior, conserva la inferior y el turno");
+            }
+        }
+    }
+
+    private sealed class MotorHttp : IMotorJuego
+    {
+        private readonly MotorJuego motor = new();
+        private TableroJuego? ultimoTablero;
+
+        public void PrepararBarredora()
+        {
+            if (ultimoTablero == null)
+            {
+                throw new InvalidOperationException("Falta el tablero de prueba.");
+            }
+
+            ultimoTablero.Celdas[0][0] = 7;
+            ultimoTablero.Celdas[9][0] = 7;
+            ultimoTablero.Celdas[12][0] = 7;
+        }
+
+        public TableroJuego CrearTablero()
+        {
+            return CrearTablero(ConfiguracionPiezas.SoloNormales);
+        }
+
+        public TableroJuego CrearTablero(ConfiguracionPiezas configuracion)
+        {
+            ultimoTablero = motor.CrearTablero(configuracion);
+            return ultimoTablero;
+        }
+
+        public PasoJuego Mover(TableroJuego tablero, Movimiento movimiento)
+        {
+            return motor.Mover(tablero, movimiento);
+        }
+
+        public PasoJuego Avanzar(TableroJuego tablero)
+        {
+            return motor.Avanzar(tablero);
+        }
+
+        public TTablero ObtenerEstado(TableroJuego tablero, int? usuarioId)
+        {
+            return motor.ObtenerEstado(tablero, usuarioId);
         }
     }
 

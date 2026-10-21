@@ -29,6 +29,7 @@ public class SalaLJ : ISalaLJ
     private readonly ICatalogoPiezasEspeciales? catalogoPiezas;
     private readonly ProyectorSala proyector;
     private readonly ControlPausas pausas;
+    private readonly ControlEfectos efectos;
     private readonly CodigosSala codigosPrivados = new();
     private readonly ConcurrentDictionary<Guid, SalaMemoria> _salas = new();
 
@@ -36,7 +37,8 @@ public class SalaLJ : ISalaLJ
     {
     }
 
-    public SalaLJ(IMotorJuego motor, OpcionesPausa opcionesPausa, ICatalogoPiezasEspeciales? catalogoPiezas, TimeProvider? reloj = null)
+    public SalaLJ(IMotorJuego motor, OpcionesPausa opcionesPausa, ICatalogoPiezasEspeciales? catalogoPiezas,
+        TimeProvider? reloj = null, OpcionesEfectos? opcionesEfectos = null)
     {
         this.reloj = reloj ?? TimeProvider.System;
         this.motor = motor;
@@ -44,6 +46,7 @@ public class SalaLJ : ISalaLJ
         this.catalogoPiezas = catalogoPiezas;
         this.proyector = new ProyectorSala(motor);
         this.pausas = new ControlPausas(proyector);
+        this.efectos = new ControlEfectos(opcionesEfectos ?? new OpcionesEfectos());
     }
 
     // ---------- Creación y configuración ----------
@@ -318,7 +321,21 @@ public class SalaLJ : ISalaLJ
                 "No hay tipos de pieza especial habilitados; desactive las piezas especiales.");
         }
 
-        return Respuesta<ConfiguracionPiezas>.Ok(new ConfiguracionPiezas(true, datos.Probabilidad, tipos.Data));
+        var permitidos = tipos.Data;
+
+        if (datos.TiposPermitidos != null)
+        {
+            var codigos = datos.TiposPermitidos.Select(codigo => (codigo ?? string.Empty).Trim())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            permitidos = tipos.Data.Where(tipo => codigos.Contains(tipo.Codigo)).ToArray();
+
+            if (codigos.Count == 0 || permitidos.Length != codigos.Count)
+            {
+                return Respuesta<ConfiguracionPiezas>.Fail("Seleccione al menos un tipo especial activo del catálogo.");
+            }
+        }
+
+        return Respuesta<ConfiguracionPiezas>.Ok(new ConfiguracionPiezas(true, datos.Probabilidad, permitidos));
     }
 
     // ---------- Consulta e ingreso ----------
@@ -457,6 +474,8 @@ public class SalaLJ : ISalaLJ
         {
             ActualizarDesconexiones(sala, Ahora);
             FinalizarSiCorresponde(sala, Ahora);
+            pausas.Actualizar(sala, Ahora);
+            ControlEfectos.Actualizar(sala, Ahora);
             var jugador = sala.BuscarJugador(usuarioId);
 
             if (jugador == null || jugador.Abandono)
@@ -465,6 +484,7 @@ public class SalaLJ : ISalaLJ
             }
 
             var error = accion(sala, jugador);
+            ControlEfectos.Actualizar(sala, Ahora);
 
             if (error == null)
             {
@@ -578,6 +598,7 @@ public class SalaLJ : ISalaLJ
         if (sala.Modo == ModoJuego.Compartido)
         {
             sala.Compartido = motor.CrearTablero(sala.Piezas);
+            sala.Compartido.EsCompartido = true;
             return;
         }
 
@@ -616,7 +637,8 @@ public class SalaLJ : ISalaLJ
 
             jugador.Secuencia = datos.Secuencia;
             var tablero = sala.Compartido ?? jugador.Tablero!;
-            AplicarPaso(sala, jugador, tablero, () => motor.Mover(tablero, datos.Movimiento), Ahora);
+            var movimiento = ControlEfectos.TraducirMovimiento(jugador, datos.Movimiento);
+            AplicarPaso(sala, jugador, tablero, () => motor.Mover(tablero, movimiento), Ahora);
             return null;
         });
     }
@@ -630,6 +652,7 @@ public class SalaLJ : ISalaLJ
     {
         var puntos = tablero.Puntuacion;
         var lineas = tablero.Lineas;
+        var secuenciaEvento = tablero.EventoSecuencia;
         var paso = accion();
 
         jugador.Puntos += tablero.Puntuacion - puntos;
@@ -648,6 +671,11 @@ public class SalaLJ : ISalaLJ
 
         if (paso.PiezaFijada)
         {
+            if (tablero.EventoSecuencia > secuenciaEvento)
+            {
+                efectos.Activar(sala, jugador, tablero, tablero.Puntuacion - puntos, ahora);
+            }
+
             jugador.UltimaCaida = ahora;
             sala.UltimaCaida = ahora;
 
@@ -658,6 +686,7 @@ public class SalaLJ : ISalaLJ
         }
 
         FinalizarSiCorresponde(sala, ahora);
+        ControlEfectos.Actualizar(sala, ahora);
     }
 
     // La limpieza de emergencia no cambia los puntos ni las líneas.
@@ -978,6 +1007,7 @@ public class SalaLJ : ISalaLJ
         ActualizarDesconexiones(sala, ahora);
 
         FinalizarSiCorresponde(sala, ahora);
+        ControlEfectos.Actualizar(sala, ahora);
 
         // Durante una pausa las piezas no descienden y el turno no avanza.
         if (sala.Estado == EstadoSala.EnCurso && !pausas.EstaPausada(sala))
@@ -1069,7 +1099,7 @@ public class SalaLJ : ISalaLJ
     private void AvanzarTableroCompartido(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Jugadores[sala.Turno].Desconexion.HasValue
-            || ahora - sala.UltimaCaida < Intervalo(sala.Compartido!))
+            || ahora - sala.UltimaCaida < Intervalo(sala.Compartido!, ControlEfectos.FactorVelocidad(sala.Jugadores[sala.Turno])))
         {
             return;
         }
@@ -1083,10 +1113,10 @@ public class SalaLJ : ISalaLJ
             ahora);
     }
 
-    private static TimeSpan Intervalo(TableroJuego tablero)
+    private static TimeSpan Intervalo(TableroJuego tablero, int factor = 1)
     {
         var milisegundos = tablero.Piezas.IntervaloBaseMs - (tablero.Nivel - 1) * 60;
-        return TimeSpan.FromMilliseconds(Math.Max(100, milisegundos));
+        return TimeSpan.FromMilliseconds(Math.Max(1, Math.Max(100, milisegundos) / factor));
     }
 
     // ---------- Persistencia ----------

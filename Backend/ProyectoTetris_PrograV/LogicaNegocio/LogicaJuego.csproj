@@ -9,5 +9,8 @@
     <ProjectReference Include="../Dominio/Dominio.csproj" />
     <ProjectReference Include="../Utilitarios/Utilitarios.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tetris.Pruebas" />
+  </ItemGroup>
 </Project>
 

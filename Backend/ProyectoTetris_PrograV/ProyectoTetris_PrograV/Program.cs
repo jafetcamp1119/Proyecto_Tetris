@@ -56,6 +56,9 @@ builder.Services.AddSingleton<IMotorJuego, MotorJuego>();
 builder.Services.AddSingleton(
     builder.Configuration.GetSection("Pausas").Get<OpcionesPausa>() ?? new OpcionesPausa());
 builder.Services.AddSingleton<ICatalogoPiezasEspeciales, CatalogoPiezasEspeciales>();
+var opcionesEfectos = builder.Configuration.GetSection("Efectos").Get<OpcionesEfectos>() ?? new OpcionesEfectos();
+opcionesEfectos.Validar();
+builder.Services.AddSingleton(opcionesEfectos);
 builder.Services.AddSingleton<ISalaLJ, SalaLJ>();
 builder.Services.AddSingleton<PublicadorSalas>();
 builder.Services.AddHostedService<RelojJuegoService>();
