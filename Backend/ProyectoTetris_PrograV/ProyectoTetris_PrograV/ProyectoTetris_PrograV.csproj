@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>Tetris-API-Desarrollo</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <ProjectReference Include="../AccesoDatos/AccesoDatos.csproj" />
+    <ProjectReference Include="../Dominio/Dominio.csproj" />
+    <ProjectReference Include="../LogicaNegocio/LogicaJuego.csproj" />
+    <ProjectReference Include="../Utilitarios/Utilitarios.csproj" />
+  </ItemGroup>
+</Project>
+
+

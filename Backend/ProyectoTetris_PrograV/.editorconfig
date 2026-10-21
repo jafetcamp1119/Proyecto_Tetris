@@ -1,0 +1,24 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+insert_final_newline = true
+max_line_length = 120
+
+csharp_new_line_before_open_brace = all
+csharp_preserve_single_line_blocks = false
+csharp_preserve_single_line_statements = false
+csharp_prefer_braces = true:warning
+csharp_style_expression_bodied_methods = false:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_properties = false:suggestion
+csharp_style_expression_bodied_accessors = false:suggestion
+csharp_style_prefer_primary_constructors = false:suggestion
+
+[*.{json,md,ts}]
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+

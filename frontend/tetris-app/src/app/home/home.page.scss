@@ -1,0 +1,43 @@
+ion-content{
+  --background: #101022;
+}
+
+.menu{
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+  align-items: center;
+  min-height: 100%;
+
+  padding: 25px;
+  text-align: center;
+}
+
+h1{
+  font-size: 50px;
+  font-weight: bold;
+  color: white;
+}
+
+h2{
+  font-size: 25px;
+  color: #b17aff;
+}
+
+p{
+  font-size: 18px;
+  color: white
+}
+
+.botones{
+  width: 100%;
+  max-width: 350%;
+  margin-top: 30px;
+}
+
+ion-button{
+  margin-bottom: 15px;
+  --background: #713aff;
+  --border-radius: 16px;
+}

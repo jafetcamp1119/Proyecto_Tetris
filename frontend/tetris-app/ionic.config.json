@@ -1,0 +1,7 @@
+{
+  "name": "tetris-app",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
