@@ -1,0 +1,105 @@
+<ion-content [fullscreen]="true">
+  <main class="login">
+    <div class="piezas" aria-hidden="true">
+      <div class="pieza pieza-t">
+        <i></i><i></i><i></i><i></i>
+      </div>
+      <div class="pieza pieza-o">
+        <i></i><i></i><i></i><i></i>
+      </div>
+      <div class="pieza pieza-l">
+        <i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+
+    <div class="contenedor">
+      <section class="presentacion">
+        <span class="etiqueta">ENCUENTRA TU PRÓXIMO RETO</span>
+
+        <h1 aria-label="Tetris">
+          <span>T</span><span>E</span><span>T</span><span>R</span><span>I</span><span>S</span>
+        </h1>
+
+        <h2>Todo encaja.<br>Tu próxima partida también.</h2>
+
+        <p>
+          Construye tu estrategia, supera tus límites
+          y comparte la emoción de cada jugada.
+        </p>
+
+        <div class="modos">
+          <span>Solitario</span>
+          <span>Compartido</span>
+          <span>Competitivo</span>
+        </div>
+      </section>
+
+      <section class="tarjeta" aria-labelledby="titulo-login">
+        <div class="marca" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+
+        <span class="bienvenida">QUÉ BUENO TENERTE AQUÍ</span>
+        <h2 id="titulo-login">Inicia sesión</h2>
+
+        <p class="descripcion">
+          Una nueva partida comienza contigo.
+        </p>
+
+        <form #formulario="ngForm" (ngSubmit)="ingresar()">
+          <label for="usuario">Usuario</label>
+
+          <input
+            id="usuario"
+            name="usuario"
+            type="text"
+            placeholder="Escribe tu usuario"
+            autocomplete="username"
+            [(ngModel)]="usuario"
+            required
+          >
+
+          <label for="contrasena">Contraseña</label>
+
+          <div class="campo-contrasena">
+            <input
+              id="contrasena"
+              name="contrasena"
+              [type]="mostrarContrasena ? 'text' : 'password'"
+              placeholder="Escribe tu contraseña"
+              autocomplete="current-password"
+              [(ngModel)]="contrasena"
+              required
+            >
+
+            <button
+              type="button"
+              class="ver"
+              [attr.aria-pressed]="mostrarContrasena"
+              aria-controls="contrasena"
+              (click)="mostrarContrasena = !mostrarContrasena"
+            >
+              {{ mostrarContrasena ? 'Ocultar' : 'Ver' }}
+            </button>
+          </div>
+
+          <button
+            class="entrar"
+            type="submit"
+            [disabled]="formulario.invalid"
+          >
+            Iniciar sesión <span aria-hidden="true">→</span>
+          </button>
+
+          <p class="mensaje" role="status">{{ mensaje }}</p>
+        </form>
+
+        <div class="pie-tarjeta">
+          <span aria-hidden="true">■</span>
+          Cada pieza cuenta. Tú también.
+        </div>
+      </section>
+    </div>
+  </main>
+</ion-content>
+

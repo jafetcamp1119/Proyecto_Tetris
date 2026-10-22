@@ -1,31 +1,82 @@
 <ion-content [fullscreen]="true">
-
-
-  <div class="menu">
-
-    <h1> TETRIS </h1>
-    <h2> Multijugador </h2>
-    <p> ¡Elije un modo de juego!</p>
-
-    <div class="botones">
-
-      <ion-button expand="block" disabled>
-
-        Modo solitario
-      </ion-button>
-
-      <ion-button expand="block" disabled>
-
-        Todos contra Todos
-      </ion-button>
-
-      <ion-button expand="block" disabled>
-
-        Competitivo
-      </ion-button>
-
-
+  <main class="menu">
+    <!-- Bloques decorativos -->
+    <div class="decoracion" aria-hidden="true">
+      <div class="pieza pieza-t">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pieza pieza-l">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="pieza pieza-o">
+        <span></span><span></span><span></span><span></span>
+      </div>
     </div>
 
-  </div>
+    <section class="panel" aria-labelledby="titulo">
+      <header>
+        <span class="etiqueta">EL SIGUIENTE NIVEL TE ESPERA</span>
+
+        <h1 id="titulo">
+          <span>T</span><span>E</span><span>T</span><span>R</span><span>I</span><span>S</span>
+        </h1>
+
+        <h2>Una pieza. Mil posibilidades.</h2>
+        <p>Elige tu modo y encuentra tu próxima partida.</p>
+      </header>
+
+      <!-- Modos de juego -->
+      <div class="modos">
+        <article class="modo solitario">
+          <div class="cabecera-modo">
+            <span class="numero">01</span>
+            <span class="categoria">A TU RITMO</span>
+          </div>
+
+          <h3>Solitario</h3>
+          <p>Tu tablero, tu estrategia. Supera tu mejor puntuación.</p>
+
+          <ion-button expand="block" disabled>
+            Jugar en solitario
+          </ion-button>
+        </article>
+
+        <article class="modo compartido">
+          <div class="cabecera-modo">
+            <span class="numero">02</span>
+            <span class="categoria">UN SOLO TABLERO</span>
+          </div>
+
+          <h3>Todos contra todos</h3>
+          <p>Comparte el tablero y encuentra tu lugar entre las piezas.</p>
+
+          <ion-button expand="block" disabled>
+            Entrar al tablero
+          </ion-button>
+        </article>
+
+        <article class="modo competitivo">
+          <div class="cabecera-modo">
+            <span class="numero">03</span>
+            <span class="categoria">ACEPTA EL RETO</span>
+          </div>
+
+          <h3>Competitivo</h3>
+          <p>Juega en tu tablero y compite contra otros jugadores.</p>
+
+          <ion-button expand="block" disabled>
+            Buscar partida
+          </ion-button>
+        </article>
+      </div>
+
+      <footer>
+        <span class="indicador"></span>
+        Modos en preparación
+        <span class="separador">·</span>
+        Cada pieza cuenta
+      </footer>
+    </section>
+  </main>
 </ion-content>
+
