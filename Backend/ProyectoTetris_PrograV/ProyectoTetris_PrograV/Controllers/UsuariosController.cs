@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazLJ;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProyectoTetris_PrograV.Seguridad;
@@ -12,23 +10,37 @@ namespace ProyectoTetris_PrograV.Controllers;
 
 [ApiController]
 [Route("api/usuarios")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class UsuariosController : ControllerBase
 {
-    private readonly IAccesoUsuarioLJ _acceso;
-    private readonly IUsuarioLJ _usuarios;
-    private readonly ServicioToken _tokens;
+    private readonly IAccesoUsuarioLJ acceso;
+    private readonly IUsuarioLJ usuarios;
+    private readonly ServicioToken tokens;
 
     public UsuariosController(IAccesoUsuarioLJ acceso, IUsuarioLJ usuarios, ServicioToken tokens)
     {
-        _acceso = acceso;
-        _usuarios = usuarios;
-        _tokens = tokens;
+        this.acceso = acceso;
+        this.usuarios = usuarios;
+        this.tokens = tokens;
     }
 
     [HttpPost("registrar")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
     public IActionResult Registrar(TRegistroUsuario datos)
     {
-        var respuesta = _acceso.Registrar(datos);
+        var respuesta = acceso.Registrar(datos);
+        if (respuesta.CodigoError == "NombreOcupado")
+        {
+            return Conflict(respuesta);
+        }
+
+        return ResponderSesion(respuesta, StatusCodes.Status201Created);
+    }
+
+    [HttpGet("disponibilidad")]
+    public IActionResult Disponibilidad([FromQuery] string nombreUsuario)
+    {
+        var respuesta = acceso.NombreDisponible(nombreUsuario);
         if (!respuesta.Success)
         {
             return BadRequest(respuesta);
@@ -37,35 +49,21 @@ public class UsuariosController : ControllerBase
         return Ok(respuesta);
     }
 
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(TLoginUsuario datos)
+    [HttpPost("recuperar")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    [HttpPost("renovar")]
+    public IActionResult Recuperar(TRecuperarSesion datos)
     {
-        var respuesta = _acceso.Autenticar(datos);
-        if (!respuesta.Success)
-        {
-            return Unauthorized(respuesta);
-        }
-
-        var usuario = respuesta.Data!;
-        var autenticacion = _tokens.Crear(usuario);
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, usuario.UsuarioId.ToString()),
-            new Claim(ClaimTypes.Name, usuario.NombreUsuario)
-        };
-        var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        // Conserva la sesión de los clientes C# anteriores; Ionic utiliza el token.
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identidad));
-        return Ok(Respuesta<TAutenticacion>.Ok(autenticacion));
+        return ResponderSesion(acceso.Recuperar(datos), StatusCodes.Status200OK);
     }
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    public IActionResult Logout()
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var sesionId = Guid.Parse(User.FindFirstValue("sid")!);
+        acceso.Revocar(sesionId, usuarioId);
         return NoContent();
     }
 
@@ -74,12 +72,53 @@ public class UsuariosController : ControllerBase
     public IActionResult Yo()
     {
         var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var respuesta = _usuarios.Buscar(new TUsuario { UsuarioId = usuarioId });
+        var respuesta = usuarios.Buscar(new TUsuario { UsuarioId = usuarioId });
         if (!respuesta.Success)
         {
-            return BadRequest(respuesta);
+            return StatusCode(StatusCodes.Status500InternalServerError, respuesta);
         }
 
         return Ok(respuesta);
+    }
+
+    [Authorize, HttpPost("codigo-recuperacion")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    public IActionResult GenerarCodigo()
+    {
+        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        return Ok(acceso.GenerarRecuperacion(usuarioId));
+    }
+
+    [HttpPost("recuperar-codigo")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    public IActionResult RecuperarCodigo(TRecuperarSesion datos)
+    {
+        try
+        {
+            return ResponderSesion(acceso.RecuperarConCodigo(datos.Credencial), StatusCodes.Status200OK);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+        {
+            return Unauthorized(Respuesta<object>.Fail("El código ya se utilizó o fue reemplazado.", "CredencialInvalida"));
+        }
+    }
+
+    private IActionResult ResponderSesion(Respuesta<TSesionJugador> respuesta, int estadoExitoso)
+    {
+        if (!respuesta.Success)
+        {
+            if (respuesta.CodigoError == "CredencialInvalida")
+            {
+                return Unauthorized(respuesta);
+            }
+
+            return BadRequest(respuesta);
+        }
+
+        var sesion = respuesta.Data!;
+        var autenticacion = tokens.Crear(sesion.Usuario, sesion.SesionId);
+        autenticacion.Credencial = sesion.Credencial;
+        autenticacion.CredencialExpiraEnUtc = sesion.CredencialExpiraEnUtc;
+        return StatusCode(estadoExitoso, Respuesta<TAutenticacion>.Ok(autenticacion));
     }
 }

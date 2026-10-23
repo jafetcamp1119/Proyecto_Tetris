@@ -5,30 +5,30 @@ export interface IRespuesta<T> {
   success: boolean;
   data: T | null;
   error: string | null;
+  codigoError?: string | null;
 }
 
 export interface IUsuario {
   usuarioId: number;
   nombreUsuario: string;
-  correo: string;
   fechaRegistro: string;
   activo: boolean;
 }
 
 export interface IRegistroUsuario {
   nombreUsuario: string;
-  correo: string;
-  contrasena: string;
 }
 
-export interface ILoginUsuario {
-  nombreUsuario: string;
-  contrasena: string;
+export interface IRecuperarSesion {
+  credencial: string;
 }
 
 export interface IAutenticacion extends IUsuario {
   token: string;
   tipoToken: 'Bearer';
+  // Solo llega al registrarse; guardar inmediatamente en almacenamiento seguro nativo.
+  credencial?: string;
+  credencialExpiraEnUtc: string;
   expiraEnUtc: string;
 }
 
@@ -86,7 +86,7 @@ export interface IActivacionEspecial {
 
 export type PiezaNormal = 'I' | 'O' | 'T' | 'S' | 'Z' | 'J' | 'L';
 export type VelocidadInicial = 'Lenta' | 'Normal' | 'Rapida';
-export type SonidoJuego = 'movimiento' | 'rotacion' | 'bloqueo' | 'lineas' | 'especial' | 'derrota';
+export type SonidoJuego = 'movimiento' | 'rotacion' | 'caida' | 'bloqueo' | 'lineas' | 'especial' | 'derrota';
 
 // Puntos base por 1, 2, 3 y 4 líneas (enteros de 0 a 10000); se multiplican por el nivel.
 export interface IPuntosLineas {
@@ -173,7 +173,9 @@ export interface IPuntuacion {
   abandono: boolean;
   reconectarHastaUtc: string | null;
   victoriasSala: number;
+  // Lidera las victorias de la sala; no implica haber ganado la última ronda.
   corona: boolean;
+  ganoRonda: boolean;
 }
 
 export type FasePausa = 'Ninguna' | 'Votando' | 'Pausada';
@@ -218,6 +220,7 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
+  numeroRonda: number;
   // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
   efectos: IEfectoTemporal[];
   ultimoEfecto: IActivacionEspecial | null;

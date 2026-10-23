@@ -9,6 +9,7 @@ namespace Utilitarios
         public bool Success { get; set; }
         public T? Data { get; set; }
         public string? Error { get; set; }
+        public string? CodigoError { get; set; }
 
         public Respuesta()
         {
@@ -28,9 +29,9 @@ namespace Utilitarios
             return new(true, data, null);
         }
 
-        public static Respuesta<T> Fail(string error)
+        public static Respuesta<T> Fail(string error, string? codigoError = null)
         {
-            return new(false, default, error);
+            return new(false, default, error) { CodigoError = codigoError };
         }
     }
 }

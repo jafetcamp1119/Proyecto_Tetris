@@ -1,0 +1,11 @@
+Verificación final - 23 de octubre de 2026
+Angular producción: compilación correcta.
+Angular pruebas: 12/12 correctas en 7 archivos.
+.NET motor/cuentas/historial: 155/155 correctas.
+.NET HTTP/SignalR: 175 comprobaciones correctas.
+SQL cuentas: preserva identidad y récord, rechaza conflictos y consumo doble.
+SQL real TetrisDB: 5 usuarios, 0 partidas y 0 resultados antes y después.
+Migración 05: aplicada, 4 columnas y 2 índices verificados.
+Android: assembleDebug correcto; identificador com.proyectotetris.juegocr conservado.
+No se hicieron commits ni push.
+Pendiente: OAuth real Google, cuatro Android físicos, Wi-Fi HTTPS y pruebas de ciclo de vida nativo.

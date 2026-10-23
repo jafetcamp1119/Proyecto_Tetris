@@ -1,3 +1,6 @@
+import { configuracion } from './configuracion';
+
 export const environment = {
-  production: true
+  production: true,
+  ...configuracion
 };

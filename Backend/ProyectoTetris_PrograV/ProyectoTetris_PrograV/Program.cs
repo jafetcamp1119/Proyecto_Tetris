@@ -11,7 +11,6 @@ using LogicaJuego;
 using LogicaJuego.Implementacions;
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProyectoTetris_PrograV.Hubs;
 using ProyectoTetris_PrograV.Seguridad;
@@ -41,7 +40,6 @@ builder.Services.AddScoped<IUnidadTrabajoEF, UnidadTrabajoEF>();
 builder.Services.AddAutoMapper(configuracion =>
 {
 }, typeof(AutoMapperProfile).Assembly);
-builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<IUsuarioLJ, UsuarioLJ>();
 builder.Services.AddScoped<IAccesoUsuarioLJ, AccesoUsuarioLJ>();
 builder.Services.AddScoped<IConfiguracionLJ, ConfiguracionLJ>();
@@ -75,6 +73,7 @@ app.UseExceptionHandler(error =>
 app.UseCors(ConfiguracionSeguridad.PoliticaCors);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<JuegoHub>("/hubs/juego", opciones =>
 {

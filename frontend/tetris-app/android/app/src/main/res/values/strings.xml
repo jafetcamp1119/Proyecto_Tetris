@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tetris</string>
+    <string name="title_activity_main">Tetris</string>
+    <string name="package_name">com.proyectotetris.juegocr</string>
+    <string name="custom_url_scheme">com.proyectotetris.juegocr</string>
+</resources>

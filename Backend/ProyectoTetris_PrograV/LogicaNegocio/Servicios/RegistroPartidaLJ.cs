@@ -58,7 +58,8 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
 
     public async Task GuardarAsync(TSala sala, CancellationToken cancellationToken = default)
     {
-        var partida = unidad.TPartida.ObtenerEntidad(p => p.CodigoSala == sala.Codigo).Data;
+        var codigoPartida = CodigoDeRonda(sala);
+        var partida = unidad.TPartida.ObtenerEntidad(p => p.CodigoSala == codigoPartida).Data;
 
         if (partida?.FechaFin != null)
         {
@@ -105,15 +106,25 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         await unidad.CompletarAsync(cancellationToken);
     }
 
+    private static string CodigoDeRonda(TSala sala)
+    {
+        if (sala.NumeroRonda == 1)
+        {
+            return sala.Codigo;
+        }
+
+        return sala.Codigo + "-" + sala.NumeroRonda;
+    }
+
     private Partida CrearPartida(TSala sala)
     {
         var partida = new Partida
         {
-            CodigoSala = sala.Codigo,
+            CodigoSala = CodigoDeRonda(sala),
             CreadorId = sala.CreadorId,
             TipoPartida = sala.Modo.ToString(),
             EsPrivada = sala.Privada,
-            CantidadMinimaJugadores = sala.Modo == ModoJuego.Individual ? 1 : 4,
+            CantidadMinimaJugadores = sala.Modo == ModoJuego.Individual ? 1 : 2,
             CantidadMaximaJugadores = sala.MaximoJugadores,
             FechaCreacion = sala.FechaInicio ?? DateTime.UtcNow
         };

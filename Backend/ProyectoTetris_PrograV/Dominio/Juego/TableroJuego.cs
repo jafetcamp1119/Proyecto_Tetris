@@ -54,7 +54,8 @@ public enum EventoSonido
     Bloqueo = 4,
     LineasEliminadas = 8,
     EspecialActivada = 16,
-    Derrota = 32
+    Derrota = 32,
+    CaidaRapida = 64
 }
 
 public readonly record struct PasoJuego(bool Cambio, bool PiezaFijada);

@@ -8,7 +8,7 @@ public class TCrearSala
     [EnumDataType(typeof(ModoJuego))]
     public ModoJuego Modo { get; set; }
 
-    [Range(1, 16)]
+    [Range(1, 4)]
     public int MaximoJugadores { get; set; } = 4;
 
     // true: la sala no aparece en el listado y se entra con el código de seis caracteres.
@@ -132,7 +132,8 @@ public record TPuntuacion(
     bool Abandono = false,
     DateTime? ReconectarHastaUtc = null,
     int VictoriasSala = 0,
-    bool Corona = false);
+    bool Corona = false,
+    bool GanoRonda = false);
 public record TSala(
     Guid Id,
     string Codigo,
@@ -159,7 +160,8 @@ public record TSala(
     int? MinimoVictoriasCorona = null,
     string? MotivoFin = null,
     TEfectoTemporal[]? Efectos = null,
-    TActivacionEspecial? UltimoEfecto = null);
+    TActivacionEspecial? UltimoEfecto = null,
+    int NumeroRonda = 1);
 
 public record TEfectoTemporal(
     int UsuarioId,

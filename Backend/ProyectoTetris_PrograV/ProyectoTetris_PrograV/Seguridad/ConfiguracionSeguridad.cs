@@ -4,10 +4,10 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Utilitarios;
+using Dominio.InterfazLJ;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
@@ -73,15 +73,14 @@ public static class ConfiguracionSeguridad
     {
         var opciones = LeerOpcionesJwt(configuracion, entorno);
 
+        servicios.Configure<OpcionesGoogle>(configuracion.GetSection(OpcionesGoogle.Seccion));
         servicios.AddSingleton(opciones);
         servicios.AddSingleton<ServicioToken>();
         AgregarCors(servicios, configuracion);
 
         servicios
-            .AddAuthentication(Esquema)
-            .AddPolicyScheme(Esquema, Esquema, ConfigurarSelectorDeEsquema)
-            .AddJwtBearer(jwt => ConfigurarJwt(jwt, opciones))
-            .AddCookie(ConfigurarCookie);
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(jwt => ConfigurarJwt(jwt, opciones));
 
         servicios.AddAuthorization();
         return servicios;
@@ -113,25 +112,6 @@ public static class ConfiguracionSeguridad
         }
 
         return opciones;
-    }
-
-    // Elige JWT cuando la solicitud trae Authorization: Bearer (o access_token en el hub) y cookie en los demás casos.
-    private static void ConfigurarSelectorDeEsquema(PolicySchemeOptions politica)
-    {
-        politica.ForwardDefaultSelector = contexto =>
-        {
-            var autorizacion = contexto.Request.Headers.Authorization.ToString();
-            var esHub = contexto.Request.Path.StartsWithSegments("/hubs/juego");
-            var tokenHub = esHub && !string.IsNullOrEmpty(contexto.Request.Query["access_token"]);
-            var esBearer = autorizacion.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase);
-
-            if (esBearer || tokenHub)
-            {
-                return JwtBearerDefaults.AuthenticationScheme;
-            }
-
-            return CookieAuthenticationDefaults.AuthenticationScheme;
-        };
     }
 
     private static void ConfigurarJwt(JwtBearerOptions jwt, OpcionesJwt opciones)
@@ -182,6 +162,14 @@ public static class ConfiguracionSeguridad
             return Task.CompletedTask;
         }
 
+        var sesion = contexto.Principal?.FindFirstValue("sid");
+        var acceso = contexto.HttpContext.RequestServices.GetRequiredService<IAccesoUsuarioLJ>();
+        if (!Guid.TryParse(sesion, out var sesionId) || !acceso.SesionVigente(sesionId, usuarioId))
+        {
+            contexto.Fail("La sesión del dispositivo ya no está vigente.");
+            return Task.CompletedTask;
+        }
+
         var identidad = (ClaimsIdentity)contexto.Principal!.Identity!;
         identidad.AddClaim(new Claim(ClaimTypes.NameIdentifier, identificador!));
         return Task.CompletedTask;
@@ -192,7 +180,11 @@ public static class ConfiguracionSeguridad
         contexto.HandleResponse();
         contexto.Response.StatusCode = StatusCodes.Status401Unauthorized;
         contexto.Response.Headers.WWWAuthenticate = "Bearer";
-        await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail("Inicie sesión con un token válido."));
+        var vencida = contexto.AuthenticateFailure is SecurityTokenExpiredException;
+        var mensaje = vencida ? "El token de acceso venció. Renová la sesión con la credencial del dispositivo."
+            : "La sesión no es válida. Intentá recuperarla con la credencial del dispositivo.";
+        var codigo = vencida ? "SesionVencida" : "SesionInvalida";
+        await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail(mensaje, codigo));
     }
 
     private static async Task ResponderSinPermiso(ForbiddenContext contexto)
@@ -201,21 +193,4 @@ public static class ConfiguracionSeguridad
         await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail("No tiene permiso para esta acción."));
     }
 
-    private static void ConfigurarCookie(CookieAuthenticationOptions cookie)
-    {
-        cookie.Cookie.Name = "Tetris.Sesion";
-        cookie.Cookie.HttpOnly = true;
-        cookie.Cookie.SameSite = SameSiteMode.Strict;
-        cookie.ExpireTimeSpan = TimeSpan.FromHours(8);
-        cookie.Events.OnRedirectToLogin = async contexto =>
-        {
-            contexto.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail("Inicie sesión para continuar."));
-        };
-        cookie.Events.OnRedirectToAccessDenied = async contexto =>
-        {
-            contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail("No tiene permiso para esta acción."));
-        };
-    }
 }

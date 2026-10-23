@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using ProyectoTetris_PrograV.Controllers;
 using Utilitarios;
+using Microsoft.AspNetCore.SignalR;
+using ProyectoTetris_PrograV.Seguridad;
 
 namespace ProyectoTetris_PrograV;
 
@@ -9,6 +11,21 @@ public static class ConfiguracionApi
 {
     public static IServiceCollection AgregarApiTetris(this IServiceCollection servicios)
     {
+        servicios.AddSingleton<DesafiosGoogle>();
+        servicios.AddScoped<IValidadorGoogle, ValidadorGoogle>();
+        servicios.AddRateLimiter(opciones =>
+        {
+            opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            opciones.AddPolicy("Acceso", contexto =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    contexto.Connection.RemoteIpAddress?.ToString() ?? "local",
+                    _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 15,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+        });
         servicios.AddControllers()
             .AddApplicationPart(typeof(UsuariosController).Assembly)
             .AddJsonOptions(opciones =>
@@ -48,7 +65,10 @@ public static class ConfiguracionApi
             };
         });
 
-        servicios.AddSignalR().AddJsonProtocol(opciones =>
+        servicios.AddSignalR(opciones =>
+        {
+            opciones.AddFilter<FiltroSesionJuego>();
+        }).AddJsonProtocol(opciones =>
         {
             opciones.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });

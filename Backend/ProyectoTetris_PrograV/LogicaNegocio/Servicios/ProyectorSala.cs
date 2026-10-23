@@ -45,7 +45,8 @@ internal sealed class ProyectorSala
             sala.MinimoVictoriasCorona,
             sala.MotivoFin,
             sala.Jugadores.SelectMany(jugador => jugador.Efectos).ToArray(),
-            CopiarUltimoEfecto(sala));
+            CopiarUltimoEfecto(sala),
+            sala.NumeroRonda);
     }
 
     private static TActivacionEspecial? CopiarUltimoEfecto(SalaMemoria sala)
@@ -173,9 +174,10 @@ internal sealed class ProyectorSala
                 jugador.Abandono,
                 jugador.Desconexion?.AddSeconds(30),
                 jugador.Victorias,
-                sala.MinimoVictoriasCorona.HasValue
-                    && jugador.Victorias >= sala.MinimoVictoriasCorona.Value
-                    && jugador.Victorias == sala.Jugadores.Max(otro => otro.Victorias)));
+                sala.Modo != ModoJuego.Individual
+                    && jugador.Victorias >= (sala.MinimoVictoriasCorona ?? 1)
+                    && jugador.Victorias == sala.Jugadores.Max(otro => otro.Victorias),
+                sala.Modo != ModoJuego.Individual && finalizada && sala.Ganadores.Contains(jugador.Id)));
         }
 
         return jugadores.ToArray();

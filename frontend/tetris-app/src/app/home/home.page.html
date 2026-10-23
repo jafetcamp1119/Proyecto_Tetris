@@ -14,6 +14,14 @@
     </div>
 
     <section class="panel" aria-labelledby="titulo">
+      <div class="barra-perfil">
+        <button class="accion secundaria" (click)="abrirAjustes()">♪ Ajustes de sonido</button>
+        <button class="accion secundaria" (click)="abrirPerfil()">👤 {{ acceso.sesion()?.nombreUsuario }}</button>
+        @if (salaPendiente) {
+          <button class="accion secundaria" (click)="reabrirSala()">Volver a mi sala</button>
+          <p>Tenés una sala pendiente. Volvé a ella y salí antes de cambiar de modo.</p>
+        }
+      </div>
       <header>
         <span class="etiqueta">EL SIGUIENTE NIVEL TE ESPERA</span>
 
@@ -36,7 +44,7 @@
           <h3>Solitario</h3>
           <p>Tu tablero, tu estrategia. Supera tu mejor puntuación.</p>
 
-          <ion-button expand="block" disabled>
+          <ion-button expand="block" (click)="abrirModo('Individual')">
             Jugar en solitario
           </ion-button>
         </article>
@@ -50,7 +58,7 @@
           <h3>Todos contra todos</h3>
           <p>Comparte el tablero y encuentra tu lugar entre las piezas.</p>
 
-          <ion-button expand="block" disabled>
+          <ion-button expand="block" (click)="abrirSalas()">
             Entrar al tablero
           </ion-button>
         </article>
@@ -64,7 +72,7 @@
           <h3>Competitivo</h3>
           <p>Juega en tu tablero y compite contra otros jugadores.</p>
 
-          <ion-button expand="block" disabled>
+          <ion-button expand="block" (click)="abrirModo('Competitivo')">
             Buscar partida
           </ion-button>
         </article>
@@ -72,7 +80,7 @@
 
       <footer>
         <span class="indicador"></span>
-        Modos en preparación
+        Tres formas de jugar
         <span class="separador">·</span>
         Cada pieza cuenta
       </footer>

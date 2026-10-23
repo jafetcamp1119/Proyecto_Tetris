@@ -140,7 +140,9 @@ public class MotorJuego : IMotorJuego
                     tablero.Puntuacion += 2;
                 }
 
-                return Fijar(tablero);
+                var caida = Fijar(tablero);
+                tablero.UltimoEvento |= EventoSonido.CaidaRapida;
+                return caida;
 
             default:
                 return new PasoJuego(false, false);
@@ -440,6 +442,11 @@ public class MotorJuego : IMotorJuego
         if (evento.HasFlag(EventoSonido.Rotacion))
         {
             sonidos.Add("rotacion");
+        }
+
+        if (evento.HasFlag(EventoSonido.CaidaRapida))
+        {
+            sonidos.Add("caida");
         }
 
         if (evento.HasFlag(EventoSonido.Bloqueo))

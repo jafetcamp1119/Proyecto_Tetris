@@ -5,6 +5,7 @@ namespace Dominio.InterfazAD;
 public interface IUnidadTrabajoEF : IDisposable
 {
     IRepositorioAD<Usuario> TUsuario { get; }
+    IRepositorioAD<CredencialDispositivo> TCredencialDispositivo { get; }
 
     IRepositorioAD<ConfiguracionJugador> TConfiguracion { get; }
 

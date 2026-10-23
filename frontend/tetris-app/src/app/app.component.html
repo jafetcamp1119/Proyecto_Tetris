@@ -1,3 +1,6 @@
 <ion-app>
   <ion-router-outlet></ion-router-outlet>
+  @if (audio.requiereInteraccion() && (audio.preferencias().musicaActiva || audio.preferencias().efectosActivos)) {
+    <button class="activar-audio" (click)="activarAudio()">♪ Activar sonido</button>
+  }
 </ion-app>

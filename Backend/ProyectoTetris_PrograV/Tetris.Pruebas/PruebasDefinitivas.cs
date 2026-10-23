@@ -218,7 +218,7 @@ internal static class PruebasDefinitivas
             Verificar(salas.Mover(id, 3, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 }).Success);
         });
 
-        prueba("Empatados suman una victoria y la corona permanece desactivada sin criterio", () =>
+        prueba("Empatados suman una victoria y comparten ambas coronas", () =>
         {
             var salas = new SalaLJ(new MotorControlado());
             var id = Preparar(salas, new TCrearSala { Modo = ModoJuego.Competitivo });
@@ -232,7 +232,7 @@ internal static class PruebasDefinitivas
             var sala = salas.Obtener(id, 1).Data!;
             Verificar(sala.Ganadores.Length == 4);
             Verificar(sala.Jugadores.All(jugador => jugador.Posicion == 1
-                && jugador.VictoriasSala == 1 && !jugador.Corona));
+                && jugador.VictoriasSala == 1 && jugador.Corona && jugador.GanoRonda));
             var unidad = new UnidadMemoria();
             var registro = new RegistroPartidaLJ(unidad);
             registro.GuardarAsync(sala).GetAwaiter().GetResult();

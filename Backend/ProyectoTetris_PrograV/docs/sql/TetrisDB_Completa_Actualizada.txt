@@ -1,0 +1,943 @@
+:ON ERROR EXIT
+-- Estructura base obtenida del catálogo verificado del repositorio; sin jugadores ni credenciales.
+-- Solo para CREAR DESDE CERO. Se detiene si TetrisDB ya existe. Para actualizar usar 04_usuarios_dispositivos_rondas.sql.
+USE [master];
+GO
+IF DB_ID(N'TetrisDB') IS NOT NULL
+    THROW 50050, 'TetrisDB ya existe. No ejecute el script completo sobre una base existente.', 1;
+CREATE DATABASE [TetrisDB] COLLATE Modern_Spanish_CI_AS;
+GO
+USE [TetrisDB];
+GO
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[EstadisticasJugador](
+	[EstadisticaId] [int] IDENTITY(1,1) NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[PartidasJugadas] [int] NOT NULL,
+	[PartidasGanadas] [int] NOT NULL,
+	[PartidasPerdidas] [int] NOT NULL,
+	[PuntuacionMaxima] [int] NOT NULL,
+	[TotalPuntos] [bigint] NOT NULL,
+	[LineasEliminadas] [int] NOT NULL,
+	[NivelMaximoAlcanzado] [int] NOT NULL,
+	[FechaActualizacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Estadist__5E78B40CE3AC4888] PRIMARY KEY CLUSTERED 
+(
+	[EstadisticaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Estadist__2B3DE7B958C27DEC] UNIQUE NONCLUSTERED 
+(
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Usuarios](
+	[UsuarioId] [int] IDENTITY(1,1) NOT NULL,
+	[NombreUsuario] [nvarchar](50) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[Correo] [nvarchar](100) COLLATE Modern_Spanish_CI_AS NULL,
+	[PasswordHash] [nvarchar](255) COLLATE Modern_Spanish_CI_AS NULL,
+	[FechaRegistro] [datetime2](7) NOT NULL,
+	[Activo] [bit] NOT NULL,
+ CONSTRAINT [PK__Usuarios__2B3DE7B88839D6AF] PRIMARY KEY CLUSTERED 
+(
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Usuarios__6B0F5AE033B56FF8] UNIQUE NONCLUSTERED 
+(
+	[NombreUsuario] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/* =====================================================
+   VISTA DEL RANKING
+   ===================================================== */
+
+CREATE VIEW VistaRanking
+AS
+
+SELECT
+    U.UsuarioId,
+    U.NombreUsuario,
+    E.PartidasJugadas,
+    E.PartidasGanadas,
+    E.PartidasPerdidas,
+    E.PuntuacionMaxima,
+    E.TotalPuntos,
+    E.LineasEliminadas,
+    E.NivelMaximoAlcanzado
+
+FROM Usuarios U
+
+INNER JOIN EstadisticasJugador E
+    ON U.UsuarioId = E.UsuarioId
+
+WHERE U.Activo = 1;
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[BloquesTablero](
+	[BloqueId] [bigint] IDENTITY(1,1) NOT NULL,
+	[TableroId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[PiezaJugadorId] [bigint] NULL,
+	[Fila] [int] NOT NULL,
+	[Columna] [int] NOT NULL,
+	[Activo] [bit] NOT NULL,
+	[FechaColocacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__BloquesT__1E811A834693E84D] PRIMARY KEY CLUSTERED 
+(
+	[BloqueId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ConexionesJugador](
+	[ConexionId] [int] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[EstadoConexion] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[FechaConexion] [datetime2](7) NOT NULL,
+	[FechaDesconexion] [datetime2](7) NULL,
+ CONSTRAINT [PK__Conexion__ECBFBD71080A476C] PRIMARY KEY CLUSTERED 
+(
+	[ConexionId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ConfiguracionJugador](
+	[ConfiguracionId] [int] IDENTITY(1,1) NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[MostrarControlesPantalla] [bit] NOT NULL,
+	[PermitirPausa] [bit] NOT NULL,
+	[SonidoActivo] [bit] NOT NULL,
+ CONSTRAINT [PK__Configur__9B95E03607AAC406] PRIMARY KEY CLUSTERED 
+(
+	[ConfiguracionId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Configur__2B3DE7B965F732F4] UNIQUE NONCLUSTERED 
+(
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[EliminacionesBloques](
+	[EliminacionId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioAtacanteId] [int] NOT NULL,
+	[UsuarioAfectadoId] [int] NULL,
+	[PiezaJugadorId] [bigint] NULL,
+	[ColumnaAfectada] [int] NULL,
+	[CantidadBloquesEliminados] [int] NOT NULL,
+	[PuntosObtenidos] [int] NOT NULL,
+	[FechaEliminacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Eliminac__BBE8B559E2E78462] PRIMARY KEY CLUSTERED 
+(
+	[EliminacionId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[EventosPartida](
+	[EventoId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NULL,
+	[TipoEvento] [nvarchar](50) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[DatosEvento] [nvarchar](max) COLLATE Modern_Spanish_CI_AS NULL,
+	[FechaEvento] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__EventosP__1EEB592193C6A0A6] PRIMARY KEY CLUSTERED 
+(
+	[EventoId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ParticipantesPartida](
+	[ParticipanteId] [int] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[Estado] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[Puntuacion] [int] NOT NULL,
+	[LineasEliminadas] [int] NOT NULL,
+	[NivelActual] [int] NOT NULL,
+	[PosicionFinal] [int] NULL,
+	[OrdenTurno] [int] NULL,
+	[EsTurnoActual] [bit] NOT NULL,
+	[Listo] [bit] NOT NULL,
+	[FechaIngreso] [datetime2](7) NOT NULL,
+	[FechaEliminacion] [datetime2](7) NULL,
+ CONSTRAINT [PK__Particip__E6DEAC5F28DF13C4] PRIMARY KEY CLUSTERED 
+(
+	[ParticipanteId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Participante] UNIQUE NONCLUSTERED 
+(
+	[PartidaId] ASC,
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Partidas](
+	[PartidaId] [int] IDENTITY(1,1) NOT NULL,
+	[CreadorId] [int] NOT NULL,
+	[CodigoSala] [nvarchar](24) COLLATE Modern_Spanish_CI_AS NULL,
+	[TipoPartida] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[EsPrivada] [bit] NOT NULL,
+	[CantidadMinimaJugadores] [int] NOT NULL,
+	[CantidadMaximaJugadores] [int] NOT NULL,
+	[Estado] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[FechaCreacion] [datetime2](7) NOT NULL,
+	[FechaInicio] [datetime2](7) NULL,
+	[FechaFin] [datetime2](7) NULL,
+	[GanadorId] [int] NULL,
+ CONSTRAINT [PK__Partidas__E63E1FE37F3403D0] PRIMARY KEY CLUSTERED 
+(
+	[PartidaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Partidas__44BC6388F5EC572E] UNIQUE NONCLUSTERED 
+(
+	[CodigoSala] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PausasPartida](
+	[PausaId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[TurnoId] [bigint] NULL,
+	[FechaInicio] [datetime2](7) NOT NULL,
+	[FechaFin] [datetime2](7) NULL,
+	[Activa] [bit] NOT NULL,
+ CONSTRAINT [PK__PausasPa__7F0BF15C11508E55] PRIMARY KEY CLUSTERED 
+(
+	[PausaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Perfiles](
+	[PerfilId] [int] IDENTITY(1,1) NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[NombreVisible] [nvarchar](50) COLLATE Modern_Spanish_CI_AS NULL,
+	[Avatar] [nvarchar](max) COLLATE Modern_Spanish_CI_AS NULL,
+	[FechaActualizacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Perfiles__0C005B062FF78748] PRIMARY KEY CLUSTERED 
+(
+	[PerfilId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Perfiles__2B3DE7B9593FAAD5] UNIQUE NONCLUSTERED 
+(
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PiezasJugador](
+	[PiezaJugadorId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[TipoPiezaId] [int] NOT NULL,
+	[Seleccionada] [bit] NOT NULL,
+	[Utilizada] [bit] NOT NULL,
+	[ObtenidaPorPuntos] [bit] NOT NULL,
+	[PuntosNecesarios] [int] NOT NULL,
+	[FechaAsignacion] [datetime2](7) NOT NULL,
+	[FechaUso] [datetime2](7) NULL,
+ CONSTRAINT [PK__PiezasJu__1D5E5C9D046970FD] PRIMARY KEY CLUSTERED 
+(
+	[PiezaJugadorId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[RecompensasPuntos](
+	[RecompensaId] [int] IDENTITY(1,1) NOT NULL,
+	[Nombre] [nvarchar](50) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[PuntosRequeridos] [int] NOT NULL,
+	[TipoPiezaId] [int] NULL,
+	[Descripcion] [nvarchar](255) COLLATE Modern_Spanish_CI_AS NULL,
+	[Activa] [bit] NOT NULL,
+ CONSTRAINT [PK__Recompen__351687DD3C56EF91] PRIMARY KEY CLUSTERED 
+(
+	[RecompensaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Resultados](
+	[ResultadoId] [int] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[Puntuacion] [int] NOT NULL,
+	[LineasEliminadas] [int] NOT NULL,
+	[NivelMaximo] [int] NOT NULL,
+	[PosicionFinal] [int] NOT NULL,
+	[EstadoFinal] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[EsGanador] [bit] NOT NULL,
+	[FechaResultado] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Resultad__7904DD616E21C864] PRIMARY KEY CLUSTERED 
+(
+	[ResultadoId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ_Resultado] UNIQUE NONCLUSTERED 
+(
+	[PartidaId] ASC,
+	[UsuarioId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[SeleccionesRecompensa](
+	[SeleccionId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[RecompensaId] [int] NOT NULL,
+	[Confirmada] [bit] NOT NULL,
+	[FechaSeleccion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Seleccio__5D23944B749E5428] PRIMARY KEY CLUSTERED 
+(
+	[SeleccionId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[TablerosPartida](
+	[TableroId] [int] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[Filas] [int] NOT NULL,
+	[Columnas] [int] NOT NULL,
+	[Estado] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[EstaPausado] [bit] NOT NULL,
+	[UsuarioPausaId] [int] NULL,
+	[FechaActualizacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK__Tableros__270E2AFCA0B90DD8] PRIMARY KEY CLUSTERED 
+(
+	[TableroId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__Tableros__E63E1FE26401C35D] UNIQUE NONCLUSTERED 
+(
+	[PartidaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[TiposPieza](
+	[TipoPiezaId] [int] IDENTITY(1,1) NOT NULL,
+	[Nombre] [nvarchar](50) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[Codigo] [nvarchar](10) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[EsEspecial] [bit] NOT NULL,
+	[EliminaColumna] [bit] NOT NULL,
+	[Descripcion] [nvarchar](255) COLLATE Modern_Spanish_CI_AS NULL,
+	[Activa] [bit] NOT NULL,
+ CONSTRAINT [PK__TiposPie__DA0ED64E25496D04] PRIMARY KEY CLUSTERED 
+(
+	[TipoPiezaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [UQ__TiposPie__06370DAC9A8FAB37] UNIQUE NONCLUSTERED 
+(
+	[Codigo] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[TurnosPartida](
+	[TurnoId] [bigint] IDENTITY(1,1) NOT NULL,
+	[PartidaId] [int] NOT NULL,
+	[UsuarioId] [int] NOT NULL,
+	[NumeroTurno] [int] NOT NULL,
+	[Estado] [nvarchar](20) COLLATE Modern_Spanish_CI_AS NOT NULL,
+	[FechaInicio] [datetime2](7) NULL,
+	[FechaFin] [datetime2](7) NULL,
+	[FuePausado] [bit] NOT NULL,
+ CONSTRAINT [PK__TurnosPa__AD3E2E94FF149DFA] PRIMARY KEY CLUSTERED 
+(
+	[TurnoId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Bloques_Posicion] ON [dbo].[BloquesTablero]
+(
+	[TableroId] ASC,
+	[Fila] ASC,
+	[Columna] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Bloques_Tablero] ON [dbo].[BloquesTablero]
+(
+	[TableroId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Eventos_Partida] ON [dbo].[EventosPartida]
+(
+	[PartidaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Participantes_Partida] ON [dbo].[ParticipantesPartida]
+(
+	[PartidaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+CREATE NONCLUSTERED INDEX [IX_Partidas_Estado] ON [dbo].[Partidas]
+(
+	[Estado] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Resultados_Puntuacion] ON [dbo].[Resultados]
+(
+	[Puntuacion] DESC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+CREATE NONCLUSTERED INDEX [IX_Turnos_Partida] ON [dbo].[TurnosPartida]
+(
+	[PartidaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[BloquesTablero] ADD  CONSTRAINT [DF__BloquesTa__Activ__40058253]  DEFAULT ((1)) FOR [Activo]
+GO
+ALTER TABLE [dbo].[BloquesTablero] ADD  CONSTRAINT [DF__BloquesTa__Fecha__40F9A68C]  DEFAULT (sysdatetime()) FOR [FechaColocacion]
+GO
+ALTER TABLE [dbo].[ConexionesJugador] ADD  CONSTRAINT [DF__Conexione__Estad__17036CC0]  DEFAULT ('Conectado') FOR [EstadoConexion]
+GO
+ALTER TABLE [dbo].[ConexionesJugador] ADD  CONSTRAINT [DF__Conexione__Fecha__17F790F9]  DEFAULT (sysdatetime()) FOR [FechaConexion]
+GO
+ALTER TABLE [dbo].[ConfiguracionJugador] ADD  CONSTRAINT [DF__Configura__Mostr__6442E2C9]  DEFAULT ((1)) FOR [MostrarControlesPantalla]
+GO
+ALTER TABLE [dbo].[ConfiguracionJugador] ADD  CONSTRAINT [DF__Configura__Permi__65370702]  DEFAULT ((1)) FOR [PermitirPausa]
+GO
+ALTER TABLE [dbo].[ConfiguracionJugador] ADD  CONSTRAINT [DF__Configura__Sonid__662B2B3B]  DEFAULT ((1)) FOR [SonidoActivo]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] ADD  CONSTRAINT [DF__Eliminaci__Canti__489AC854]  DEFAULT ((0)) FOR [CantidadBloquesEliminados]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] ADD  CONSTRAINT [DF__Eliminaci__Punto__498EEC8D]  DEFAULT ((0)) FOR [PuntosObtenidos]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] ADD  CONSTRAINT [DF__Eliminaci__Fecha__4A8310C6]  DEFAULT (sysdatetime()) FOR [FechaEliminacion]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Parti__0C85DE4D]  DEFAULT ((0)) FOR [PartidasJugadas]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Parti__0D7A0286]  DEFAULT ((0)) FOR [PartidasGanadas]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Parti__0E6E26BF]  DEFAULT ((0)) FOR [PartidasPerdidas]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Puntu__0F624AF8]  DEFAULT ((0)) FOR [PuntuacionMaxima]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Total__10566F31]  DEFAULT ((0)) FOR [TotalPuntos]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Linea__114A936A]  DEFAULT ((0)) FOR [LineasEliminadas]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Nivel__123EB7A3]  DEFAULT ((1)) FOR [NivelMaximoAlcanzado]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] ADD  CONSTRAINT [DF__Estadisti__Fecha__1332DBDC]  DEFAULT (sysdatetime()) FOR [FechaActualizacion]
+GO
+ALTER TABLE [dbo].[EventosPartida] ADD  CONSTRAINT [DF__EventosPa__Fecha__1CBC4616]  DEFAULT (sysdatetime()) FOR [FechaEvento]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Estad__74AE54BC]  DEFAULT ('Esperando') FOR [Estado]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Puntu__75A278F5]  DEFAULT ((0)) FOR [Puntuacion]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Linea__76969D2E]  DEFAULT ((0)) FOR [LineasEliminadas]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Nivel__778AC167]  DEFAULT ((1)) FOR [NivelActual]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__EsTur__787EE5A0]  DEFAULT ((0)) FOR [EsTurnoActual]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Listo__797309D9]  DEFAULT ((0)) FOR [Listo]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] ADD  CONSTRAINT [DF__Participa__Fecha__7A672E12]  DEFAULT (sysdatetime()) FOR [FechaIngreso]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF__Partidas__TipoPa__68487DD7]  DEFAULT ('Multijugador') FOR [TipoPartida]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF__Partidas__EsPriv__693CA210]  DEFAULT ((0)) FOR [EsPrivada]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF_Partidas_MinimoJugadores]  DEFAULT ((4)) FOR [CantidadMinimaJugadores]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF__Partidas__Cantid__6B24EA82]  DEFAULT ((4)) FOR [CantidadMaximaJugadores]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF__Partidas__Estado__6C190EBB]  DEFAULT ('Esperando') FOR [Estado]
+GO
+ALTER TABLE [dbo].[Partidas] ADD  CONSTRAINT [DF__Partidas__FechaC__6D0D32F4]  DEFAULT (sysdatetime()) FOR [FechaCreacion]
+GO
+ALTER TABLE [dbo].[PausasPartida] ADD  CONSTRAINT [DF__PausasPar__Fecha__5CA1C101]  DEFAULT (sysdatetime()) FOR [FechaInicio]
+GO
+ALTER TABLE [dbo].[PausasPartida] ADD  CONSTRAINT [DF__PausasPar__Activ__5D95E53A]  DEFAULT ((1)) FOR [Activa]
+GO
+ALTER TABLE [dbo].[Perfiles] ADD  CONSTRAINT [DF__Perfiles__FechaA__6383C8BA]  DEFAULT (sysdatetime()) FOR [FechaActualizacion]
+GO
+ALTER TABLE [dbo].[PiezasJugador] ADD  CONSTRAINT [DF__PiezasJug__Selec__367C1819]  DEFAULT ((0)) FOR [Seleccionada]
+GO
+ALTER TABLE [dbo].[PiezasJugador] ADD  CONSTRAINT [DF__PiezasJug__Utili__37703C52]  DEFAULT ((0)) FOR [Utilizada]
+GO
+ALTER TABLE [dbo].[PiezasJugador] ADD  CONSTRAINT [DF__PiezasJug__Obten__3864608B]  DEFAULT ((0)) FOR [ObtenidaPorPuntos]
+GO
+ALTER TABLE [dbo].[PiezasJugador] ADD  CONSTRAINT [DF__PiezasJug__Punto__395884C4]  DEFAULT ((0)) FOR [PuntosNecesarios]
+GO
+ALTER TABLE [dbo].[PiezasJugador] ADD  CONSTRAINT [DF__PiezasJug__Fecha__3A4CA8FD]  DEFAULT (sysdatetime()) FOR [FechaAsignacion]
+GO
+ALTER TABLE [dbo].[RecompensasPuntos] ADD  CONSTRAINT [DF__Recompens__Activ__51300E55]  DEFAULT ((1)) FOR [Activa]
+GO
+ALTER TABLE [dbo].[Resultados] ADD  CONSTRAINT [DF__Resultado__Puntu__02FC7413]  DEFAULT ((0)) FOR [Puntuacion]
+GO
+ALTER TABLE [dbo].[Resultados] ADD  CONSTRAINT [DF__Resultado__Linea__03F0984C]  DEFAULT ((0)) FOR [LineasEliminadas]
+GO
+ALTER TABLE [dbo].[Resultados] ADD  CONSTRAINT [DF__Resultado__Nivel__04E4BC85]  DEFAULT ((1)) FOR [NivelMaximo]
+GO
+ALTER TABLE [dbo].[Resultados] ADD  CONSTRAINT [DF__Resultado__EsGan__05D8E0BE]  DEFAULT ((0)) FOR [EsGanador]
+GO
+ALTER TABLE [dbo].[Resultados] ADD  CONSTRAINT [DF__Resultado__Fecha__06CD04F7]  DEFAULT (sysdatetime()) FOR [FechaResultado]
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa] ADD  CONSTRAINT [DF__Seleccion__Confi__55F4C372]  DEFAULT ((0)) FOR [Confirmada]
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa] ADD  CONSTRAINT [DF__Seleccion__Fecha__56E8E7AB]  DEFAULT (sysdatetime()) FOR [FechaSeleccion]
+GO
+ALTER TABLE [dbo].[TablerosPartida] ADD  CONSTRAINT [DF__TablerosP__Filas__22751F6C]  DEFAULT ((20)) FOR [Filas]
+GO
+ALTER TABLE [dbo].[TablerosPartida] ADD  CONSTRAINT [DF__TablerosP__Colum__236943A5]  DEFAULT ((10)) FOR [Columnas]
+GO
+ALTER TABLE [dbo].[TablerosPartida] ADD  CONSTRAINT [DF__TablerosP__Estad__245D67DE]  DEFAULT ('Esperando') FOR [Estado]
+GO
+ALTER TABLE [dbo].[TablerosPartida] ADD  CONSTRAINT [DF__TablerosP__EstaP__25518C17]  DEFAULT ((0)) FOR [EstaPausado]
+GO
+ALTER TABLE [dbo].[TablerosPartida] ADD  CONSTRAINT [DF__TablerosP__Fecha__2645B050]  DEFAULT (sysdatetime()) FOR [FechaActualizacion]
+GO
+ALTER TABLE [dbo].[TiposPieza] ADD  CONSTRAINT [DF__TiposPiez__EsEsp__31B762FC]  DEFAULT ((0)) FOR [EsEspecial]
+GO
+ALTER TABLE [dbo].[TiposPieza] ADD  CONSTRAINT [DF__TiposPiez__Elimi__32AB8735]  DEFAULT ((0)) FOR [EliminaColumna]
+GO
+ALTER TABLE [dbo].[TiposPieza] ADD  CONSTRAINT [DF__TiposPiez__Activ__339FAB6E]  DEFAULT ((1)) FOR [Activa]
+GO
+ALTER TABLE [dbo].[TurnosPartida] ADD  CONSTRAINT [DF__TurnosPar__Estad__2B0A656D]  DEFAULT ('Pendiente') FOR [Estado]
+GO
+ALTER TABLE [dbo].[TurnosPartida] ADD  CONSTRAINT [DF__TurnosPar__FuePa__2BFE89A6]  DEFAULT ((0)) FOR [FuePausado]
+GO
+ALTER TABLE [dbo].[Usuarios] ADD  CONSTRAINT [DF__Usuarios__FechaR__5EBF139D]  DEFAULT (sysdatetime()) FOR [FechaRegistro]
+GO
+ALTER TABLE [dbo].[Usuarios] ADD  CONSTRAINT [DF__Usuarios__Activo__5FB337D6]  DEFAULT ((1)) FOR [Activo]
+GO
+ALTER TABLE [dbo].[BloquesTablero]  WITH CHECK ADD  CONSTRAINT [CK_Bloque_Columna] CHECK  (([Columna]>=(0)))
+GO
+ALTER TABLE [dbo].[BloquesTablero] CHECK CONSTRAINT [CK_Bloque_Columna]
+GO
+ALTER TABLE [dbo].[BloquesTablero]  WITH CHECK ADD  CONSTRAINT [CK_Bloque_Fila] CHECK  (([Fila]>=(0)))
+GO
+ALTER TABLE [dbo].[BloquesTablero] CHECK CONSTRAINT [CK_Bloque_Fila]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida]  WITH CHECK ADD  CONSTRAINT [CK_Participante_Lineas] CHECK  (([LineasEliminadas]>=(0)))
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] CHECK CONSTRAINT [CK_Participante_Lineas]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida]  WITH CHECK ADD  CONSTRAINT [CK_Participante_Nivel] CHECK  (([NivelActual]>=(1)))
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] CHECK CONSTRAINT [CK_Participante_Nivel]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida]  WITH CHECK ADD  CONSTRAINT [CK_Participante_Puntos] CHECK  (([Puntuacion]>=(0)))
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] CHECK CONSTRAINT [CK_Participante_Puntos]
+GO
+ALTER TABLE [dbo].[Partidas]  WITH CHECK ADD  CONSTRAINT [CK_Partidas_Estado] CHECK  (([Estado]='Cancelada' OR [Estado]='Finalizada' OR [Estado]='Pausada' OR [Estado]='EnCurso' OR [Estado]='Esperando'))
+GO
+ALTER TABLE [dbo].[Partidas] CHECK CONSTRAINT [CK_Partidas_Estado]
+GO
+ALTER TABLE [dbo].[Partidas]  WITH CHECK ADD  CONSTRAINT [CK_Partidas_Jugadores] CHECK  (([CantidadMinimaJugadores]>=(1) AND [CantidadMaximaJugadores]>=[CantidadMinimaJugadores]))
+GO
+ALTER TABLE [dbo].[Partidas] CHECK CONSTRAINT [CK_Partidas_Jugadores]
+GO
+ALTER TABLE [dbo].[RecompensasPuntos]  WITH CHECK ADD  CONSTRAINT [CK_Recompensa_Puntos] CHECK  (([PuntosRequeridos]>(0)))
+GO
+ALTER TABLE [dbo].[RecompensasPuntos] CHECK CONSTRAINT [CK_Recompensa_Puntos]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE dbo.DeterminarGanador
+    @PartidaId int
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- Solo consulta finales autoritativos escritos por RegistroPartidaLJ.
+    -- Devuelve todos los ganadores, incluidos los empates. No finaliza partidas activas.
+    SELECT r.UsuarioId AS GanadorId
+    FROM dbo.Resultados r
+    INNER JOIN dbo.Partidas p ON p.PartidaId = r.PartidaId
+    WHERE r.PartidaId = @PartidaId AND p.Estado = N'Finalizada' AND r.EsGanador = 1
+    ORDER BY r.UsuarioId;
+END;
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/* =====================================================
+   PROCEDIMIENTO: ELIMINAR COLUMNA
+   La pieza especial elimina bloques de otros jugadores.
+   ===================================================== */
+
+CREATE PROCEDURE EliminarColumna
+    @PartidaId INT,
+    @UsuarioAtacanteId INT,
+    @Columna INT
+AS
+BEGIN
+
+    SET NOCOUNT ON;
+
+    DECLARE @TableroId INT;
+    DECLARE @CantidadEliminada INT;
+
+
+    SELECT
+        @TableroId = TableroId
+
+    FROM TablerosPartida
+
+    WHERE PartidaId = @PartidaId;
+
+
+    SELECT
+        @CantidadEliminada = COUNT(*)
+
+    FROM BloquesTablero
+
+    WHERE TableroId = @TableroId
+      AND Columna = @Columna
+      AND UsuarioId <> @UsuarioAtacanteId
+      AND Activo = 1;
+
+
+    UPDATE BloquesTablero
+
+    SET Activo = 0
+
+    WHERE TableroId = @TableroId
+      AND Columna = @Columna
+      AND UsuarioId <> @UsuarioAtacanteId
+      AND Activo = 1;
+
+
+    INSERT INTO EliminacionesBloques
+    (
+        PartidaId,
+        UsuarioAtacanteId,
+        ColumnaAfectada,
+        CantidadBloquesEliminados,
+        PuntosObtenidos
+    )
+    VALUES
+    (
+        @PartidaId,
+        @UsuarioAtacanteId,
+        @Columna,
+        @CantidadEliminada,
+        @CantidadEliminada * 10
+    );
+
+
+    UPDATE ParticipantesPartida
+
+    SET Puntuacion =
+        Puntuacion + (@CantidadEliminada * 10)
+
+    WHERE PartidaId = @PartidaId
+      AND UsuarioId = @UsuarioAtacanteId;
+
+
+    SELECT
+        @CantidadEliminada AS BloquesEliminados;
+
+END;
+GO
+ALTER TABLE [dbo].[BloquesTablero]  WITH CHECK ADD  CONSTRAINT [FK_Bloque_Pieza] FOREIGN KEY([PiezaJugadorId])
+REFERENCES [dbo].[PiezasJugador] ([PiezaJugadorId])
+GO
+ALTER TABLE [dbo].[BloquesTablero] CHECK CONSTRAINT [FK_Bloque_Pieza]
+GO
+ALTER TABLE [dbo].[BloquesTablero]  WITH CHECK ADD  CONSTRAINT [FK_Bloque_Tablero] FOREIGN KEY([TableroId])
+REFERENCES [dbo].[TablerosPartida] ([TableroId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[BloquesTablero] CHECK CONSTRAINT [FK_Bloque_Tablero]
+GO
+ALTER TABLE [dbo].[BloquesTablero]  WITH CHECK ADD  CONSTRAINT [FK_Bloque_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[BloquesTablero] CHECK CONSTRAINT [FK_Bloque_Usuario]
+GO
+ALTER TABLE [dbo].[ConexionesJugador]  WITH CHECK ADD  CONSTRAINT [FK_Conexion_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ConexionesJugador] CHECK CONSTRAINT [FK_Conexion_Partida]
+GO
+ALTER TABLE [dbo].[ConexionesJugador]  WITH CHECK ADD  CONSTRAINT [FK_Conexion_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[ConexionesJugador] CHECK CONSTRAINT [FK_Conexion_Usuario]
+GO
+ALTER TABLE [dbo].[ConfiguracionJugador]  WITH CHECK ADD  CONSTRAINT [FK_Configuracion_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ConfiguracionJugador] CHECK CONSTRAINT [FK_Configuracion_Usuario]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques]  WITH CHECK ADD  CONSTRAINT [FK_Eliminacion_Afectado] FOREIGN KEY([UsuarioAfectadoId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] CHECK CONSTRAINT [FK_Eliminacion_Afectado]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques]  WITH CHECK ADD  CONSTRAINT [FK_Eliminacion_Atacante] FOREIGN KEY([UsuarioAtacanteId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] CHECK CONSTRAINT [FK_Eliminacion_Atacante]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques]  WITH CHECK ADD  CONSTRAINT [FK_Eliminacion_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] CHECK CONSTRAINT [FK_Eliminacion_Partida]
+GO
+ALTER TABLE [dbo].[EliminacionesBloques]  WITH CHECK ADD  CONSTRAINT [FK_Eliminacion_Pieza] FOREIGN KEY([PiezaJugadorId])
+REFERENCES [dbo].[PiezasJugador] ([PiezaJugadorId])
+GO
+ALTER TABLE [dbo].[EliminacionesBloques] CHECK CONSTRAINT [FK_Eliminacion_Pieza]
+GO
+ALTER TABLE [dbo].[EstadisticasJugador]  WITH CHECK ADD  CONSTRAINT [FK_Estadistica_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[EstadisticasJugador] CHECK CONSTRAINT [FK_Estadistica_Usuario]
+GO
+ALTER TABLE [dbo].[EventosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Evento_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[EventosPartida] CHECK CONSTRAINT [FK_Evento_Partida]
+GO
+ALTER TABLE [dbo].[EventosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Evento_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[EventosPartida] CHECK CONSTRAINT [FK_Evento_Usuario]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida]  WITH CHECK ADD  CONSTRAINT [FK_Participante_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] CHECK CONSTRAINT [FK_Participante_Partida]
+GO
+ALTER TABLE [dbo].[ParticipantesPartida]  WITH CHECK ADD  CONSTRAINT [FK_Participante_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[ParticipantesPartida] CHECK CONSTRAINT [FK_Participante_Usuario]
+GO
+ALTER TABLE [dbo].[Partidas]  WITH CHECK ADD  CONSTRAINT [FK_Partidas_Creador] FOREIGN KEY([CreadorId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[Partidas] CHECK CONSTRAINT [FK_Partidas_Creador]
+GO
+ALTER TABLE [dbo].[Partidas]  WITH CHECK ADD  CONSTRAINT [FK_Partidas_Ganador] FOREIGN KEY([GanadorId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[Partidas] CHECK CONSTRAINT [FK_Partidas_Ganador]
+GO
+ALTER TABLE [dbo].[PausasPartida]  WITH CHECK ADD  CONSTRAINT [FK_Pausa_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PausasPartida] CHECK CONSTRAINT [FK_Pausa_Partida]
+GO
+ALTER TABLE [dbo].[PausasPartida]  WITH CHECK ADD  CONSTRAINT [FK_Pausa_Turno] FOREIGN KEY([TurnoId])
+REFERENCES [dbo].[TurnosPartida] ([TurnoId])
+GO
+ALTER TABLE [dbo].[PausasPartida] CHECK CONSTRAINT [FK_Pausa_Turno]
+GO
+ALTER TABLE [dbo].[PausasPartida]  WITH CHECK ADD  CONSTRAINT [FK_Pausa_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[PausasPartida] CHECK CONSTRAINT [FK_Pausa_Usuario]
+GO
+ALTER TABLE [dbo].[Perfiles]  WITH CHECK ADD  CONSTRAINT [FK_Perfiles_Usuarios] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Perfiles] CHECK CONSTRAINT [FK_Perfiles_Usuarios]
+GO
+ALTER TABLE [dbo].[PiezasJugador]  WITH CHECK ADD  CONSTRAINT [FK_PiezaJugador_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[PiezasJugador] CHECK CONSTRAINT [FK_PiezaJugador_Partida]
+GO
+ALTER TABLE [dbo].[PiezasJugador]  WITH CHECK ADD  CONSTRAINT [FK_PiezaJugador_Tipo] FOREIGN KEY([TipoPiezaId])
+REFERENCES [dbo].[TiposPieza] ([TipoPiezaId])
+GO
+ALTER TABLE [dbo].[PiezasJugador] CHECK CONSTRAINT [FK_PiezaJugador_Tipo]
+GO
+ALTER TABLE [dbo].[PiezasJugador]  WITH CHECK ADD  CONSTRAINT [FK_PiezaJugador_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[PiezasJugador] CHECK CONSTRAINT [FK_PiezaJugador_Usuario]
+GO
+ALTER TABLE [dbo].[RecompensasPuntos]  WITH CHECK ADD  CONSTRAINT [FK_Recompensa_Pieza] FOREIGN KEY([TipoPiezaId])
+REFERENCES [dbo].[TiposPieza] ([TipoPiezaId])
+GO
+ALTER TABLE [dbo].[RecompensasPuntos] CHECK CONSTRAINT [FK_Recompensa_Pieza]
+GO
+ALTER TABLE [dbo].[Resultados]  WITH CHECK ADD  CONSTRAINT [FK_Resultado_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[Resultados] CHECK CONSTRAINT [FK_Resultado_Partida]
+GO
+ALTER TABLE [dbo].[Resultados]  WITH CHECK ADD  CONSTRAINT [FK_Resultado_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[Resultados] CHECK CONSTRAINT [FK_Resultado_Usuario]
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa]  WITH CHECK ADD  CONSTRAINT [FK_Seleccion_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa] CHECK CONSTRAINT [FK_Seleccion_Partida]
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa]  WITH CHECK ADD  CONSTRAINT [FK_Seleccion_Recompensa] FOREIGN KEY([RecompensaId])
+REFERENCES [dbo].[RecompensasPuntos] ([RecompensaId])
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa] CHECK CONSTRAINT [FK_Seleccion_Recompensa]
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa]  WITH CHECK ADD  CONSTRAINT [FK_Seleccion_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[SeleccionesRecompensa] CHECK CONSTRAINT [FK_Seleccion_Usuario]
+GO
+ALTER TABLE [dbo].[TablerosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Tablero_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[TablerosPartida] CHECK CONSTRAINT [FK_Tablero_Partida]
+GO
+ALTER TABLE [dbo].[TablerosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Tablero_Pausa] FOREIGN KEY([UsuarioPausaId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[TablerosPartida] CHECK CONSTRAINT [FK_Tablero_Pausa]
+GO
+ALTER TABLE [dbo].[TurnosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Turno_Partida] FOREIGN KEY([PartidaId])
+REFERENCES [dbo].[Partidas] ([PartidaId])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[TurnosPartida] CHECK CONSTRAINT [FK_Turno_Partida]
+GO
+ALTER TABLE [dbo].[TurnosPartida]  WITH CHECK ADD  CONSTRAINT [FK_Turno_Usuario] FOREIGN KEY([UsuarioId])
+REFERENCES [dbo].[Usuarios] ([UsuarioId])
+GO
+ALTER TABLE [dbo].[TurnosPartida] CHECK CONSTRAINT [FK_Turno_Usuario]
+GO
+ALTER TABLE dbo.Usuarios ADD NombreUsuarioNormalizado AS
+    UPPER(LTRIM(RTRIM(NombreUsuario)) COLLATE Latin1_General_100_CI_AS_SC) PERSISTED;
+CREATE UNIQUE INDEX UX_Usuarios_NombreNormalizado ON dbo.Usuarios(NombreUsuarioNormalizado);
+CREATE UNIQUE INDEX UX_Usuarios_Correo ON dbo.Usuarios(Correo) WHERE Correo IS NOT NULL;
+GO
+CREATE TABLE dbo.CredencialesDispositivo (
+    CredencialDispositivoId uniqueidentifier NOT NULL CONSTRAINT PK_CredencialesDispositivo PRIMARY KEY,
+    UsuarioId int NOT NULL,
+    HashCredencial varchar(64) NOT NULL,
+    FechaCreacionUtc datetime2 NOT NULL,
+    ExpiraEnUtc datetime2 NOT NULL,
+    RevocadaEnUtc datetime2 NULL,
+    CONSTRAINT FK_CredencialesDispositivo_Usuarios FOREIGN KEY (UsuarioId) REFERENCES dbo.Usuarios(UsuarioId),
+    CONSTRAINT CK_CredencialesDispositivo_Fechas CHECK (ExpiraEnUtc > FechaCreacionUtc)
+);
+CREATE UNIQUE INDEX IX_CredencialesDispositivo_HashCredencial ON dbo.CredencialesDispositivo(HashCredencial);
+CREATE INDEX IX_CredencialesDispositivo_UsuarioId ON dbo.CredencialesDispositivo(UsuarioId);
+GO
+SET IDENTITY_INSERT dbo.TiposPieza ON;
+INSERT INTO dbo.TiposPieza ([TipoPiezaId], [Nombre], [Codigo], [EsEspecial], [EliminaColumna], [Descripcion], [Activa]) VALUES
+(1, N'Pieza I', N'I', 0, 0, N'Pieza normal', 1),
+(2, N'Pieza O', N'O', 0, 0, N'Pieza normal', 1),
+(3, N'Pieza T', N'T', 0, 0, N'Pieza normal', 1),
+(4, N'Pieza L', N'L', 0, 0, N'Pieza normal', 1),
+(5, N'Pieza J', N'J', 0, 0, N'Pieza normal', 1),
+(6, N'Pieza S', N'S', 0, 0, N'Pieza normal', 1),
+(7, N'Pieza Z', N'Z', 0, 0, N'Pieza normal', 1),
+(8, N'Pieza Eliminadora', N'X', 1, 1, N'Elimina bloques de otros jugadores en una columna', 1),
+(15, N'Elimina fila', N'FILA', 1, 0, N'Al fijarse elimina la fila de su celda más baja; las filas superiores bajan.', 1),
+(16, N'Confusión', N'CONFUSION', 1, 0, N'Invierte izquierda y derecha del siguiente jugador activo durante el plazo del servidor.', 1),
+(17, N'Acelerador', N'ACELERADOR', 1, 0, N'Acelera la caída del siguiente jugador activo durante el plazo del servidor.', 1),
+(18, N'Bomba', N'BOMBA', 1, 0, N'Vacía un área de 3 por 3 centrada en la celda más baja e izquierda de la pieza.', 1),
+(19, N'Doble puntuación', N'DOBLE', 1, 0, N'Duplica únicamente los puntos por líneas de la jugada, conservando el nivel.', 1),
+(20, N'Barredora', N'BARREDORA', 1, 0, N'Limpia la mitad superior del tablero compartido sin desplazar filas ni puntuar la limpieza.', 1);
+SET IDENTITY_INSERT dbo.TiposPieza OFF;
+GO
+SET IDENTITY_INSERT dbo.RecompensasPuntos ON;
+INSERT INTO dbo.RecompensasPuntos ([RecompensaId], [Nombre], [PuntosRequeridos], [TipoPiezaId], [Descripcion], [Activa]) VALUES
+(1, N'Pieza Eliminadora', 500, 8, N'Permite eliminar bloques de otros jugadores', 1);
+SET IDENTITY_INSERT dbo.RecompensasPuntos OFF;
+GO

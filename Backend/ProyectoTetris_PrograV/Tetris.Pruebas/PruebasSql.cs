@@ -23,7 +23,7 @@ internal static class PruebasSql
             VerificarCatalogoReal(cadena);
             var usuarios = Enumerable.Range(
                 1,
-                4).Select(i => new Usuario { NombreUsuario = prefijo + i, Correo = prefijo + i + "@example.com", PasswordHash = "SoloParaPruebaTransaccional", Activo = true, FechaRegistro = DateTime.UtcNow }).ToArray();
+                4).Select(i => new Usuario { NombreUsuario = prefijo + i, Activo = true, FechaRegistro = DateTime.UtcNow }).ToArray();
             db.Usuarios.AddRange(usuarios);
             await db.SaveChangesAsync();
             using var unidad = new UnidadTrabajoEF(db);
@@ -146,6 +146,7 @@ internal static class PruebasSql
             }
 
             Console.WriteLine("OK SQL: cancelación, eliminación de provisionales y conservación de finales.");
+            await VerificarRondasAsync(usuarios, registro, db);
             return 0;
         }
         catch (Exception ex)
@@ -160,6 +161,63 @@ internal static class PruebasSql
             var quedan = await db.Usuarios.AnyAsync(u => u.NombreUsuario.StartsWith(prefijo));
             Console.WriteLine(quedan ? "ERROR: revisar limpieza de usuarios de prueba." : "ROLLBACK correcto: no quedaron registros de prueba.");
         }
+    }
+
+    private static async Task VerificarRondasAsync(Usuario[] usuarios, RegistroPartidaLJ registro, TetrisDBContext db)
+    {
+        var salas = new SalaLJ(new MotorControlado());
+        var id = salas.Crear(usuarios[0].UsuarioId, usuarios[0].NombreUsuario,
+            new TCrearSala { Modo = ModoJuego.Competitivo }).Data!.Id;
+        for (var indice = 0; indice < usuarios.Length; indice++)
+        {
+            if (indice > 0)
+            {
+                salas.Unirse(id, usuarios[indice].UsuarioId, usuarios[indice].NombreUsuario);
+            }
+
+            salas.Conectar(id, usuarios[indice].UsuarioId, "rondas-" + indice);
+        }
+
+        for (var numeroRonda = 1; numeroRonda <= 2; numeroRonda++)
+        {
+            foreach (var usuario in usuarios)
+            {
+                salas.Preparar(id, usuario.UsuarioId, true);
+            }
+
+            var inicio = salas.Iniciar(id, usuarios[0].UsuarioId).Data!;
+            await registro.GuardarAsync(inicio);
+            foreach (var usuario in usuarios)
+            {
+                salas.Mover(id, usuario.UsuarioId, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
+            }
+
+            var final = salas.Obtener(id, usuarios[0].UsuarioId).Data!;
+            await registro.GuardarAsync(final);
+            await registro.GuardarAsync(final);
+            salas.ConfirmarPersistencia(id, final.RevisionPersistencia);
+            if (final.Jugadores.Any(jugador => !jugador.GanoRonda || !jugador.Corona || jugador.VictoriasSala != numeroRonda))
+            {
+                throw new Exception("Las coronas o victorias no se conservaron entre rondas.");
+            }
+
+            if (numeroRonda == 1 && !salas.NuevaRonda(id, usuarios[0].UsuarioId).Success)
+            {
+                throw new Exception("No se pudo preparar la siguiente ronda guardada.");
+            }
+        }
+
+        var codigoSala = salas.Obtener(id, usuarios[0].UsuarioId).Data!.Codigo;
+        var codigosRondas = new[] { codigoSala, codigoSala + "-2" };
+        var partidas = await db.Partidas.Where(partida => codigosRondas.Contains(partida.CodigoSala)).ToListAsync();
+        var identificadores = partidas.Select(partida => partida.PartidaId).ToArray();
+        var resultados = await db.Resultados.CountAsync(resultado => identificadores.Contains(resultado.PartidaId) && resultado.EsGanador);
+        if (partidas.Count != 2 || resultados != 8)
+        {
+            throw new Exception("Se sobrescribieron resultados de rondas anteriores en SQL.");
+        }
+
+        Console.WriteLine("OK SQL: dos rondas, ocho resultados, empates, coronas y victorias acumuladas sin sobrescribir históricos.");
     }
 
     private static void VerificarCatalogoReal(string cadena)

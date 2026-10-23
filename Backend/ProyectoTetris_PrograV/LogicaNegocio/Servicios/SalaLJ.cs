@@ -10,8 +10,8 @@ namespace LogicaJuego.Servicios;
 // Las reglas de la pausa están en PausaPartida/ControlPausas y la conversión a DTO en ProyectorSala.
 public class SalaLJ : ISalaLJ
 {
-    private const int MinimoMultijugador = 4;
-    private const int MaximoJugadores = 16;
+    private const int MinimoMultijugador = 2;
+    private const int MaximoJugadores = 4;
     private const int SegundosReconexion = 30;
 
     private readonly ConcurrentQueue<TEventoSala> eventos = new();
@@ -64,7 +64,7 @@ public class SalaLJ : ISalaLJ
 
         if (maximo < minimoPermitido || maximo > MaximoJugadores)
         {
-            return Respuesta<TSala>.Fail("El multijugador requiere capacidad de 4 a 16 jugadores.");
+            return Respuesta<TSala>.Fail("Elegí una sala de dos, tres o cuatro jugadores.");
         }
 
         var piezas = ConstruirConfiguracionCompleta(
@@ -527,6 +527,60 @@ public class SalaLJ : ISalaLJ
             sala.Estado = EstadoSala.EnCurso;
             sala.Version++;
             sala.Revision++;
+            return null;
+        });
+    }
+
+    // Se espera la confirmación del guardado final antes de descartar el estado de la ronda.
+    public Respuesta<TSala> NuevaRonda(Guid salaId, int usuarioId)
+    {
+        return Ejecutar(salaId, usuarioId, (sala, _) =>
+        {
+            if (sala.Creador != usuarioId)
+            {
+                return "Solamente el creador puede preparar otra ronda.";
+            }
+
+            if (sala.Estado != EstadoSala.Finalizada)
+            {
+                return "La ronda debe haber finalizado.";
+            }
+
+            if (sala.RevisionGuardada != sala.Revision)
+            {
+                return "Los resultados todavía se están guardando. Intentá nuevamente en unos segundos.";
+            }
+
+            sala.Jugadores.RemoveAll(jugador => jugador.Abandono);
+            foreach (var jugador in sala.Jugadores)
+            {
+                jugador.Listo = false;
+                jugador.Perdido = false;
+                jugador.Puntos = 0;
+                jugador.Lineas = 0;
+                jugador.Nivel = 1;
+                jugador.Secuencia = 0;
+                jugador.Tablero = null;
+                jugador.Efectos.Clear();
+                jugador.Desconexion = null;
+                if (jugador.Conexiones.Count == 0)
+                {
+                    jugador.Desconexion = Ahora;
+                }
+            }
+
+            sala.NumeroRonda++;
+            sala.Estado = EstadoSala.Esperando;
+            sala.Compartido = null;
+            sala.Turno = 0;
+            sala.Inicio = null;
+            sala.Fin = null;
+            sala.Ganadores = [];
+            sala.MotivoFin = null;
+            sala.UltimoEfecto = null;
+            sala.Pausa = new PausaPartida(opcionesPausa);
+            sala.Creada = Ahora;
+            sala.Version++;
             return null;
         });
     }

@@ -1,3 +1,5 @@
+> Acceso actualizado: usar únicamente nickname y credencial de dispositivo. El login con contraseña y cookies quedó retirado. Ver [usuarios, coronas y rondas](docs/USUARIOS_CORONAS_RONDAS.md) y los contratos TypeScript actualizados. Los ejemplos anteriores de login de este documento son históricos.
+
 # Tetris — servidor C# para Ionic + Angular
 
 El frontend definitivo será Ionic, Angular, TypeScript, HTML y SCSS, empaquetado con Capacitor

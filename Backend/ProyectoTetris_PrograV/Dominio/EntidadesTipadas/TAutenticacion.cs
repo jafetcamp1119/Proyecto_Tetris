@@ -6,4 +6,8 @@ public class TAutenticacion : TUsuario
     public string Token { get; set; } = "";
     public string TipoToken { get; set; } = "Bearer";
     public DateTime ExpiraEnUtc { get; set; }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? Credencial { get; set; }
+    public DateTime CredencialExpiraEnUtc { get; set; }
 }

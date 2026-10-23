@@ -68,3 +68,16 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Certificados y configuraciones privadas de Android/Google
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+**/google-services.json
+**/client_secret*.json
+.env
+.env.*
+!.env.example

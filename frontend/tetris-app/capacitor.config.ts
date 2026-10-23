@@ -1,9 +1,19 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'tetris-app',
-  webDir: 'www'
+  appId: 'com.proyectotetris.juegocr',
+  appName: 'Tetris',
+  webDir: 'www',
+  plugins: {
+    SocialLogin: {
+      providers: {
+        google: 'implementation',
+        facebook: 'compileOnly',
+        apple: 'compileOnly',
+        twitter: 'compileOnly'
+      }
+    }
+  }
 };
 
 export default config;

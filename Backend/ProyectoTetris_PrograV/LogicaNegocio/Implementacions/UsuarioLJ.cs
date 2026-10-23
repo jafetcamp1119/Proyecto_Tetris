@@ -23,56 +23,7 @@ namespace LogicaJuego
 
         public Respuesta<TUsuario> Insertar(TUsuario datos)
         {
-            var resultado = new Respuesta<TUsuario>();
-            try
-            {
-                if (string.IsNullOrWhiteSpace(datos.NombreUsuario) ||
-                    string.IsNullOrWhiteSpace(datos.Correo) ||
-                    string.IsNullOrWhiteSpace(datos.PasswordHash))
-                {
-                    return Respuesta<TUsuario>.Fail(
-                        "Para crear cuentas desde la API utilice Registrar con una contraseña.");
-                }
-
-                var duplicado = _unidadDeTrabajo.TUsuario.ObtenerEntidad(
-                    x => x.NombreUsuario == datos.NombreUsuario || x.Correo == datos.Correo);
-                if (!duplicado.Success)
-                {
-                    return Respuesta<TUsuario>.Fail(duplicado.Error ?? "Error al consultar.");
-                }
-
-                if (duplicado.Data != null)
-                {
-                    return Respuesta<TUsuario>.Fail("El nombre o correo ya está registrado.");
-                }
-
-                // 2. Convertimos TUsuario -> Usuario
-                var entidad = _mapper.Map<Usuario>(datos);
-                entidad.PasswordHash = datos.PasswordHash;
-                // 3. Insertar mediante el repositorio.
-                // Esta línea depende de cómo hiciste IUnidadTrabajoEF.
-                var respuestaRepositorio = _unidadDeTrabajo.TUsuario.Insertar(entidad);
-                if (!respuestaRepositorio.Success)
-                {
-                    resultado.Success = false;
-                    resultado.Error = respuestaRepositorio.Error;
-                    return resultado;
-                }
-
-                // 4. Guardar cambios
-                _unidadDeTrabajo.Completar();
-                // 5. Usuario -> TUsuario
-                resultado.Data = _mapper.Map<TUsuario>(respuestaRepositorio.Data);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al insertar usuario.");
-                resultado.Success = false;
-                _unidadDeTrabajo.Rollback();
-                resultado.Error = "No se pudo completar la operación de usuarios.";
-            }
-
-            return resultado;
+            return Respuesta<TUsuario>.Fail("Para crear una identidad utilice el registro con nickname de IAccesoUsuarioLJ.");
         }
 
         public Respuesta<TUsuario> Modificar(TUsuario datos)
@@ -88,7 +39,12 @@ namespace LogicaJuego
                     return resultado;
                 }
 
-                _mapper.Map(datos, usuarioActual.Data);
+                if (datos.NombreUsuario.Trim() != usuarioActual.Data.NombreUsuario)
+                {
+                    return Respuesta<TUsuario>.Fail("El cambio de nickname no está habilitado.");
+                }
+
+                usuarioActual.Data.Activo = datos.Activo;
                 var respuestaRepositorio = _unidadDeTrabajo.TUsuario.Modificar(usuarioActual.Data);
                 if (!respuestaRepositorio.Success)
                 {

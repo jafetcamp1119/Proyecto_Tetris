@@ -68,22 +68,26 @@ public class TetrisApi : ITetrisApi
         }
     }
 
-    public Task<Respuesta<TUsuario>> RegistrarAsync(TRegistroUsuario datos, CancellationToken ct = default)
+    public async Task<Respuesta<TAutenticacion>> RegistrarAsync(TRegistroUsuario datos, CancellationToken ct = default)
     {
-        return Enviar<TUsuario>(HttpMethod.Post, "api/usuarios/registrar", datos, ct);
+        var respuesta = await Enviar<TAutenticacion>(HttpMethod.Post, "api/usuarios/registrar", datos, ct);
+        GuardarToken(respuesta);
+        return respuesta;
     }
 
-    public async Task<Respuesta<TUsuario>> LoginAsync(TLoginUsuario datos, CancellationToken ct = default)
+    public async Task<Respuesta<TAutenticacion>> RecuperarAsync(TRecuperarSesion datos, CancellationToken ct = default)
     {
-        var respuesta = await Enviar<TAutenticacion>(HttpMethod.Post, "api/usuarios/login", datos, ct);
+        var respuesta = await Enviar<TAutenticacion>(HttpMethod.Post, "api/usuarios/recuperar", datos, ct);
+        GuardarToken(respuesta);
+        return respuesta;
+    }
 
-        if (!respuesta.Success || respuesta.Data == null)
+    private void GuardarToken(Respuesta<TAutenticacion> respuesta)
+    {
+        if (respuesta.Success && respuesta.Data != null)
         {
-            return Respuesta<TUsuario>.Fail(respuesta.Error ?? "No se pudo iniciar sesión.");
+            _token = respuesta.Data.Token;
         }
-
-        _token = respuesta.Data.Token;
-        return Respuesta<TUsuario>.Ok(respuesta.Data);
     }
 
     public async Task LogoutAsync(CancellationToken ct = default)

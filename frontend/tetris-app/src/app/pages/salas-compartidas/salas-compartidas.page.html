@@ -1,0 +1,107 @@
+<ion-content [fullscreen]="true">
+
+    <main class="sala">
+
+        <!-- Piezas decorativas que van a caer -->
+        <div class="piezas-fondo" aria-hidden="true">
+
+            <!-- Pieza T -->
+            <div class="pieza pieza-t">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <!-- Pieza L -->
+            <div class="pieza pieza-l">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <!-- Pieza O -->
+            <div class="pieza pieza-o">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+        </div>
+
+
+      <!--------------------------------------------------------------------------------------------------------------------------------->
+
+        <!-- Contenido de nuestra pantalla -->
+       <section class="contenido">
+    <a class="accion secundaria" routerLink="/home">← Menú principal</a>
+
+    <h1>Modo {{ modo === 'Competitivo' ? 'competitivo' : 'compartido' }}</h1>
+
+    <p class="descripcion">
+        {{ modo === 'Competitivo' ? 'Tu tablero, tu estrategia. Competí con hasta tres rivales.' : 'Un tablero, de dos a cuatro jugadores y una sola victoria.' }}
+    </p>
+
+    <div class="opciones-sala">
+
+        <!-- Crear una sala -->
+        <button
+            type="button"
+            class="boton-sala crear"
+            (click)="seleccionarOpcion('crear')">
+
+            <span class="icono">✚</span>
+
+            <span class="titulo-boton">Crear sala</span>
+
+            <span class="descripcion-boton">
+                Configura tu propia partida.
+            </span>
+
+        </button>
+
+        <!-- Buscar salas públicas -->
+        <button
+            type="button"
+            class="boton-sala publica"
+            (click)="seleccionarOpcion('publica')">
+
+            <span class="icono">🌐</span>
+
+            <span class="titulo-boton">Salas públicas</span>
+
+            <span class="descripcion-boton">
+                Encuentra una partida disponible.
+            </span>
+
+        </button>
+
+        <!-- Unirse a una sala privada -->
+        <button
+            type="button"
+            class="boton-sala privada"
+            (click)="seleccionarOpcion('privada')">
+
+            <span class="icono">🔒</span>
+
+            <span class="titulo-boton">Sala privada</span>
+
+            <span class="descripcion-boton">
+                Ingresa con un código de sala.
+            </span>
+
+        </button>
+
+    </div>
+
+    <p class="mensaje-opcion" role="status">
+        {{ mensajeOpcion }}
+    </p>
+
+</section>
+
+    </main>
+
+</ion-content>

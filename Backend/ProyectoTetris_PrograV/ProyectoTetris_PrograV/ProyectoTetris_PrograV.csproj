@@ -6,6 +6,7 @@
     <UserSecretsId>Tetris-API-Desarrollo</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Google.Apis.Auth" Version="1.77.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <ProjectReference Include="../AccesoDatos/AccesoDatos.csproj" />
     <ProjectReference Include="../Dominio/Dominio.csproj" />

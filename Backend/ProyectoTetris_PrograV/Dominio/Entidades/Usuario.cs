@@ -9,13 +9,20 @@ public partial class Usuario
 
     public string NombreUsuario { get; set; } = null!;
 
-    public string Correo { get; set; } = null!;
+    public string? Correo { get; set; }
 
-    public string PasswordHash { get; set; } = null!;
+    public string? PasswordHash { get; set; }
+
+    public string NombreUsuarioNormalizado { get; set; } = "";
 
     public DateTime FechaRegistro { get; set; }
 
     public bool Activo { get; set; }
+
+    public string? GoogleSub { get; set; }
+    public string? AvatarGoogle { get; set; }
+    public string? HashRecuperacion { get; set; }
+    public DateTime? RecuperacionExpiraEnUtc { get; set; }
 
     public virtual ICollection<BloquesTablero> BloquesTableros { get; set; } = new List<BloquesTablero>();
 

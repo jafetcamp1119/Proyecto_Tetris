@@ -15,6 +15,7 @@ public interface ISalaLJ
     Respuesta<TSala> Obtener(Guid salaId, int usuarioId);
     Respuesta<TSala> Preparar(Guid salaId, int usuarioId, bool listo);
     Respuesta<TSala> Iniciar(Guid salaId, int usuarioId);
+    Respuesta<TSala> NuevaRonda(Guid salaId, int usuarioId);
     Respuesta<TSala> Mover(Guid salaId, int usuarioId, TMovimiento datos);
     Respuesta<TSala> SolicitarPausa(Guid salaId, int usuarioId);
     Respuesta<TSala> VotarPausa(Guid salaId, int usuarioId, bool aceptar);

@@ -96,6 +96,12 @@ public class SalasController : ControllerBase
         return await Publicar(salas.Iniciar(id, UsuarioId));
     }
 
+    [HttpPost("{id:guid}/nueva-ronda")]
+    public async Task<IActionResult> NuevaRonda(Guid id)
+    {
+        return await Publicar(salas.NuevaRonda(id, UsuarioId));
+    }
+
     [HttpPost("{id:guid}/movimientos")]
     public async Task<IActionResult> Mover(Guid id, TMovimiento datos)
     {

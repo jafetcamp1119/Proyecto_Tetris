@@ -56,6 +56,16 @@ public partial class TetrisDBContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<CredencialDispositivo>(entity =>
+        {
+            entity.ToTable("CredencialesDispositivo");
+            entity.HasKey(credencial => credencial.CredencialDispositivoId);
+            entity.Property(credencial => credencial.HashCredencial).HasMaxLength(64).IsUnicode(false);
+            entity.HasIndex(credencial => credencial.HashCredencial).IsUnique();
+            entity.HasOne(credencial => credencial.Usuario).WithMany()
+                .HasForeignKey(credencial => credencial.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<BloquesTablero>(entity =>
         {
             entity.HasKey(e => e.BloqueId).HasName("PK__BloquesT__1E811A834693E84D");
@@ -213,7 +223,7 @@ public partial class TetrisDBContext : DbContext
 
             entity.Property(e => e.CantidadMaximaJugadores).HasDefaultValue(4);
             entity.Property(e => e.CantidadMinimaJugadores).HasDefaultValue(4);
-            entity.Property(e => e.CodigoSala).HasMaxLength(20);
+            entity.Property(e => e.CodigoSala).HasMaxLength(24);
             entity.Property(e => e.Estado)
                 .HasMaxLength(20)
                 .HasDefaultValue("Esperando");
@@ -406,9 +416,14 @@ public partial class TetrisDBContext : DbContext
 
         modelBuilder.Entity<Usuario>(entity =>
         {
+            entity.Property(e => e.GoogleSub).HasMaxLength(255).IsUnicode(false).IsConcurrencyToken();
+            entity.HasIndex(e => e.GoogleSub).IsUnique().HasFilter("[GoogleSub] IS NOT NULL");
+            entity.Property(e => e.AvatarGoogle).HasMaxLength(2048);
+            entity.Property(e => e.HashRecuperacion).HasMaxLength(64).IsUnicode(false).IsConcurrencyToken();
+            entity.HasIndex(e => e.HashRecuperacion).IsUnique().HasFilter("[HashRecuperacion] IS NOT NULL");
             entity.HasKey(e => e.UsuarioId).HasName("PK__Usuarios__2B3DE7B88839D6AF");
 
-            entity.HasIndex(e => e.Correo, "UQ__Usuarios__60695A194A7AC665").IsUnique();
+            entity.HasIndex(e => e.Correo, "UX_Usuarios_Correo").IsUnique().HasFilter("[Correo] IS NOT NULL");
 
             entity.HasIndex(e => e.NombreUsuario, "UQ__Usuarios__6B0F5AE033B56FF8").IsUnique();
 
@@ -417,6 +432,10 @@ public partial class TetrisDBContext : DbContext
             entity.Property(e => e.FechaRegistro).HasDefaultValueSql("(sysdatetime())");
             entity.Property(e => e.NombreUsuario).HasMaxLength(50);
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
+            entity.Property(e => e.NombreUsuarioNormalizado).HasMaxLength(50)
+                .UseCollation("Latin1_General_100_CI_AS_SC")
+                .HasComputedColumnSql("UPPER(LTRIM(RTRIM([NombreUsuario])) COLLATE Latin1_General_100_CI_AS_SC)", stored: true);
+            entity.HasIndex(e => e.NombreUsuarioNormalizado, "UX_Usuarios_NombreNormalizado").IsUnique();
         });
 
         modelBuilder.Entity<VistaRanking>(entity =>

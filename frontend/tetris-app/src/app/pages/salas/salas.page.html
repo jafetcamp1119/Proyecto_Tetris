@@ -1,0 +1,46 @@
+<ion-content>
+    <main class="pantalla-tetris">
+        <nav class="acciones">
+            <a class="accion secundaria" [routerLink]="datos.modo === 'Individual' ? '/home' : '/salas-compartidas'" [queryParams]="{ modo: datos.modo }">← Volver</a>
+            <a class="accion secundaria" routerLink="/home">Menú principal</a>
+        </nav>
+        <h1>{{ nombreModo(datos.modo) }}</h1>
+        <p role="status">{{ mensaje }}</p>
+        @if (accion === 'privada') {
+            <section class="tarjeta-tetris ingreso-privado">
+                <h2>Ingresá el código de tu sala</h2>
+                <form (ngSubmit)="porCodigo()">
+                    <label for="codigo-sala">Código de seis caracteres</label>
+                    <input id="codigo-sala" name="codigo" class="codigo-sala" [(ngModel)]="codigo" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="A7K92P">
+                    <button class="accion" type="submit" [disabled]="cargando || codigo.trim().length !== 6">Unirme</button>
+                </form>
+            </section>
+        }
+        @if (accion === 'publicas') {
+            <section class="tarjeta-tetris">
+                <h2>Salas públicas</h2>
+                <button class="accion secundaria" [disabled]="cargando" (click)="actualizar()">Actualizar listado</button>
+                @for (sala of publicas; track sala.id) {
+                    <article class="fila-resultado">
+                        <strong>Sala de {{ sala.creadorNombre }}</strong>
+                        <p>{{ nombreModo(sala.modo) }} · {{ sala.jugadores }} / {{ sala.maximoJugadores }} jugadores</p>
+                        @if (sala.modo === 'Compartido') { <p>{{ sala.piezasEspecialesActivas ? 'Con piezas especiales' : 'Solo piezas normales' }}</p> }
+                        <button class="accion" [disabled]="cargando" (click)="unirse(sala.id)">Entrar</button>
+                    </article>
+                } @empty {
+                    @if (!cargando && !mensaje) {
+                        <p>No hay partidas disponibles. ¡Podés crear una!</p>
+                        <a class="accion" routerLink="/salas/crear" [queryParams]="{ modo: datos.modo }">Crear sala</a>
+                    }
+                }
+            </section>
+        }
+        @if (accion === 'crear') {
+            <section class="tarjeta-tetris">
+                <h2>{{ datos.modo === 'Individual' ? 'Prepará tu partida' : 'Crear sala' }}</h2>
+                <app-configuracion-sala [datos]="datos" [catalogo]="catalogo" />
+                <button class="accion" [disabled]="cargando" (click)="crear()">{{ cargando ? 'Preparando...' : (datos.modo === 'Individual' ? 'Crear partida' : 'Crear sala') }}</button>
+            </section>
+        }
+    </main>
+</ion-content>

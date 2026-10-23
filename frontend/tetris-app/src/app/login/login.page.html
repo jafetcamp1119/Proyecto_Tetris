@@ -40,59 +40,57 @@
         </div>
 
         <span class="bienvenida">QUÉ BUENO TENERTE AQUÍ</span>
-        <h2 id="titulo-login">Inicia sesión</h2>
+        <h2 id="titulo-login">Bienvenido a Tetris</h2>
 
         <p class="descripcion">
-          Una nueva partida comienza contigo.
-        </p>
-
+          Ingresa tu nombre de usuario para comenzar a jugar.
+         </p>
         <form #formulario="ngForm" (ngSubmit)="ingresar()">
-          <label for="usuario">Usuario</label>
 
-          <input
-            id="usuario"
-            name="usuario"
-            type="text"
-            placeholder="Escribe tu usuario"
-            autocomplete="username"
-            [(ngModel)]="usuario"
-            required
-          >
+    <label for="usuario">Nombre de usuario</label>
 
-          <label for="contrasena">Contraseña</label>
+    <input
+        id="usuario"
+        name="usuario"
+        type="text"
+        placeholder="Escribe tu nickname"
+        autocomplete="nickname"
+        [(ngModel)]="usuario"
+        required
+    >
 
-          <div class="campo-contrasena">
-            <input
-              id="contrasena"
-              name="contrasena"
-              [type]="mostrarContrasena ? 'text' : 'password'"
-              placeholder="Escribe tu contraseña"
-              autocomplete="current-password"
-              [(ngModel)]="contrasena"
-              required
-            >
+    <button
+        class="entrar"
+        type="submit"
+        [disabled]="formulario.invalid || cargando"
+    >
+        Comenzar a jugar
+        <span aria-hidden="true">→</span>
+    </button>
 
-            <button
-              type="button"
-              class="ver"
-              [attr.aria-pressed]="mostrarContrasena"
-              aria-controls="contrasena"
-              (click)="mostrarContrasena = !mostrarContrasena"
-            >
-              {{ mostrarContrasena ? 'Ocultar' : 'Ver' }}
-            </button>
-          </div>
+    <p class="mensaje" role="status">{{ mensaje }}</p>
 
-          <button
-            class="entrar"
-            type="submit"
-            [disabled]="formulario.invalid"
-          >
-            Iniciar sesión <span aria-hidden="true">→</span>
-          </button>
+</form>
 
-          <p class="mensaje" role="status">{{ mensaje }}</p>
-        </form>
+        @if (visible) {
+          <app-google-acceso (finalizado)="continuar()" />
+        }
+        @if (acceso.perfiles().length) {
+          <details class="perfiles-recordados">
+            <summary>Jugadores recordados</summary>
+            <p>Quien tenga acceso a este dispositivo puede utilizar estos perfiles.</p>
+            @for (perfil of acceso.perfiles(); track perfil.usuarioId) {
+              <button class="accion" type="button" [disabled]="cargando || !perfil.credencial" (click)="seleccionar(perfil.usuarioId)">{{ perfil.nombreUsuario }}</button>
+              <button class="accion secundaria" type="button" (click)="acceso.quitarPerfil(perfil.usuarioId)">Quitar del dispositivo</button>
+            }
+          </details>
+        }
+        <details>
+          <summary>Recuperar con código privado</summary>
+          <label for="codigo">Código de recuperación</label>
+          <input id="codigo" type="password" [(ngModel)]="codigoRecuperacion" autocomplete="off">
+          <button class="accion" type="button" [disabled]="cargando || !codigoRecuperacion" (click)="recuperar()">Recuperar jugador</button>
+        </details>
 
         <div class="pie-tarjeta">
           <span aria-hidden="true">■</span>

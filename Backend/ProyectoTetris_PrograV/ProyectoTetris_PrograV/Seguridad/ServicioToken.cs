@@ -15,13 +15,14 @@ public class ServicioToken
         _opciones = opciones;
     }
 
-    public TAutenticacion Crear(TUsuario usuario)
+    public TAutenticacion Crear(TUsuario usuario, Guid sesionId)
     {
         var ahora = DateTime.UtcNow;
         var expiracion = ahora.AddMinutes(_opciones.MinutosExpiracion);
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, usuario.UsuarioId.ToString()),
+            new Claim("sid", sesionId.ToString()),
             new Claim(JwtRegisteredClaimNames.UniqueName, usuario.NombreUsuario),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
@@ -41,6 +42,8 @@ public class ServicioToken
             Correo = usuario.Correo,
             FechaRegistro = usuario.FechaRegistro,
             Activo = usuario.Activo,
+            GoogleVinculado = usuario.GoogleVinculado,
+            AvatarGoogle = usuario.AvatarGoogle,
             Token = new JwtSecurityTokenHandler().WriteToken(token),
             ExpiraEnUtc = expiracion
         };

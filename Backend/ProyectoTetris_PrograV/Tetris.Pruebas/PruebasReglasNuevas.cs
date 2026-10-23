@@ -684,14 +684,14 @@ internal static class PruebasReglasNuevas
         prueba("Las salas públicas no superan su capacidad máxima", () =>
         {
             var salas = new SalaLJ(new MotorControlado());
-            var id = SalaEnEspera(salas, ModoJuego.Competitivo, false, 5);
+            var id = SalaEnEspera(salas, ModoJuego.Competitivo, false, 4);
 
-            for (var jugador = 2; jugador <= 5; jugador++)
+            for (var jugador = 2; jugador <= 4; jugador++)
             {
                 Verificar(salas.Unirse(id, jugador, $"J{jugador}").Success);
             }
 
-            Verificar(!salas.Unirse(id, 6, "J6").Success);
+            Verificar(!salas.Unirse(id, 5, "J5").Success);
         });
     }
 }

@@ -16,5 +16,8 @@ namespace Dominio.EntidadesTipadas
         public string EstadoFinal { get; set; } = null!;
         public bool EsGanador { get; set; }
         public DateTime FechaResultado { get; set; }
+        public string Modalidad { get; set; } = "";
+        public int CantidadParticipantes { get; set; }
+        public bool EmpatePrimerLugar { get; set; }
     }
 }

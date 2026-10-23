@@ -40,6 +40,18 @@ public class ResultadoLJ : BaseLJ<Resultado, TResultado>, IResultadoLJ
             var resultados = Mapper.Map<IEnumerable<TResultado>>(respuesta.Data)
                 .OrderByDescending(r => r.FechaResultado)
                 .ToArray();
+            var ids = resultados.Select(r => r.PartidaId).ToArray();
+            var partidas = Unidad.TPartida.Buscar(p => ids.Contains(p.PartidaId)).Data!.ToDictionary(p => p.PartidaId);
+            var cantidades = Unidad.TParticipante.Buscar(p => ids.Contains(p.PartidaId)).Data!
+                .GroupBy(p => p.PartidaId).ToDictionary(g => g.Key, g => g.Count());
+            var ganadores = Unidad.TResultado.Buscar(r => ids.Contains(r.PartidaId) && r.EsGanador).Data!
+                .GroupBy(r => r.PartidaId).ToDictionary(g => g.Key, g => g.Count());
+            foreach (var resultado in resultados)
+            {
+                resultado.Modalidad = partidas.GetValueOrDefault(resultado.PartidaId)?.TipoPartida ?? "Desconocida";
+                resultado.CantidadParticipantes = cantidades.GetValueOrDefault(resultado.PartidaId);
+                resultado.EmpatePrimerLugar = resultado.EsGanador && ganadores.GetValueOrDefault(resultado.PartidaId) > 1;
+            }
             return Respuesta<IEnumerable<TResultado>>.Ok(resultados);
         });
     }

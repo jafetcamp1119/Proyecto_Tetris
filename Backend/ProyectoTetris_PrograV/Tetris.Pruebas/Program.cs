@@ -12,7 +12,6 @@ using LogicaJuego;
 using LogicaJuego.Implementacions;
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Tetris.Cliente.Servicios;
@@ -43,6 +42,21 @@ if (args.Contains("--verificar-sql"))
         Console.WriteLine($"No se pudo verificar SQL: {ex.Message}");
         return 1;
     }
+}
+
+if (args.Contains("--verificar-acceso-real"))
+{
+    return await VerificacionAccesoReal.EjecutarAsync();
+}
+
+if (args.Contains("--cuentas-sql"))
+{
+    return await PruebasCuentasSql.EjecutarAsync();
+}
+
+if (args.Contains("--identidad-sql"))
+{
+    return await PruebasIdentidadSql.EjecutarAsync();
 }
 
 if (args.Contains("--integracion-sql"))
@@ -79,10 +93,10 @@ Prueba("El DTO público no expone hash", () =>
     Verificar(!JsonSerializer.Serialize(dto).Contains("secreto"));
     Verificar(!JsonSerializer.Serialize(dto).Contains("PasswordHash"));
 });
-Prueba("EF conserva las 19 entidades y la relación de tablero", () =>
+Prueba("EF conserva las entidades existentes y agrega credenciales de dispositivo", () =>
 {
     using var db = new TetrisDBContext(new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer("Server=localhost;Database=Prueba;Integrated Security=true;TrustServerCertificate=true").Options);
-    Verificar(db.Model.GetEntityTypes().Count() == 19);
+    Verificar(db.Model.GetEntityTypes().Count() == 20);
     Verificar(db.Model.FindEntityType(typeof(Partida))!.FindProperty("CantidadMinimaJugadores")!.GetDefaultValue()!.Equals(4));
 });
 Prueba("La gravedad baja una pieza sin HTTP", () =>
@@ -187,9 +201,9 @@ Prueba("Caída instantánea fija cuatro bloques", () =>
     return (id, salas);
 }
 
-Prueba("Multijugador no inicia con tres participantes", () =>
+Prueba("Multijugador no inicia con un único participante", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo, 3);
+    var(id, salas) = CrearSala(ModoJuego.Competitivo, 1);
     Verificar(!salas.Iniciar(id, 1).Success);
 });
 Prueba("Un invitado no puede iniciar ni consultar una sala ajena", () =>
@@ -285,25 +299,75 @@ Prueba("Las revisiones de guardado no ocultan derrotas posteriores", () =>
     salas.ConfirmarPersistencia(id, inicio.RevisionPersistencia);
     Verificar(salas.PendientesPersistencia().Single().RevisionPersistencia > inicio.RevisionPersistencia);
 });
-Prueba("Registro y login usan hash y rechazan duplicados", () =>
+Prueba("Registro con nickname, normalización y credencial privada", () =>
 {
     var unidad = new UnidadMemoria();
-    var acceso = new AccesoUsuarioLJ(
-        unidad,
-        mapper,
-        new PasswordHasher<Usuario>(),
-        NullLogger<AccesoUsuarioLJ>.Instance);
-    var registro = new TRegistroUsuario
+    var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+    var registro = acceso.Registrar(new TRegistroUsuario { NombreUsuario = " Ana " });
+    Verificar(registro.Success && registro.Data!.Usuario.NombreUsuario == "Ana");
+    Verificar(unidad.Usuarios.Datos[0].Correo == null && unidad.Usuarios.Datos[0].PasswordHash == null);
+    Verificar(!acceso.Registrar(new TRegistroUsuario { NombreUsuario = "aNA" }).Success);
+    Verificar(!acceso.Registrar(new TRegistroUsuario { NombreUsuario = "   " }).Success);
+    Verificar(!acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Ana\n" }).Success);
+    Verificar(!acceso.Registrar(new TRegistroUsuario { NombreUsuario = new string('x', 51) }).Success);
+    var credencial = registro.Data!.Credencial!;
+    Verificar(credencial.Length == 64);
+    var guardada = unidad.TCredencialDispositivo.Listar().Data!.Single();
+    Verificar(guardada.HashCredencial != credencial);
+    var recuperada = acceso.Recuperar(new TRecuperarSesion { Credencial = credencial });
+    Verificar(recuperada.Success && recuperada.Data!.Usuario.UsuarioId == registro.Data.Usuario.UsuarioId);
+    Verificar(recuperada.Data!.Credencial == null);
+    Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = new string('0', 64) }).Success);
+    guardada.ExpiraEnUtc = DateTime.UtcNow.AddSeconds(-1);
+    Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = credencial }).Success);
+    guardada.ExpiraEnUtc = DateTime.UtcNow.AddDays(1);
+    acceso.Revocar(guardada.CredencialDispositivoId, guardada.UsuarioId);
+    Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = credencial }).Success);
+});
+Prueba("Coronas, rondas y resultados históricos independientes", () =>
+{
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
+    salas.Iniciar(id, 1);
+    Verificar(!salas.NuevaRonda(id, 1).Success);
+    var unidad = new UnidadMemoria();
+    var registro = new RegistroPartidaLJ(unidad);
+    for (var jugador = 1; jugador <= 4; jugador++)
     {
-        NombreUsuario = "Ana",
-        Correo = "ana@example.com",
-        Contrasena = "Prueba123!"
-    };
-    Verificar(acceso.Registrar(registro).Success);
-    Verificar(unidad.Usuarios.Datos[0].PasswordHash != registro.Contrasena);
-    Verificar(!acceso.Registrar(registro).Success);
-    Verificar(acceso.Autenticar(new TLoginUsuario { NombreUsuario = "Ana", Contrasena = registro.Contrasena }).Success);
-    Verificar(!acceso.Autenticar(new TLoginUsuario { NombreUsuario = "Ana", Contrasena = "incorrecta" }).Success);
+        salas.Mover(id, jugador, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
+    }
+
+    var final = salas.Obtener(id, 1).Data!;
+    Verificar(final.Jugadores.All(jugador => jugador.GanoRonda && jugador.Corona && jugador.VictoriasSala == 1));
+    Verificar(!salas.NuevaRonda(id, 1).Success);
+    registro.GuardarAsync(final).GetAwaiter().GetResult();
+    salas.ConfirmarPersistencia(id, final.RevisionPersistencia);
+    Verificar(!salas.NuevaRonda(id, 2).Success);
+    var nueva = salas.NuevaRonda(id, 1).Data!;
+    Verificar(nueva.NumeroRonda == 2 && nueva.Estado == EstadoSala.Esperando);
+    Verificar(nueva.Jugadores.All(jugador => !jugador.Listo && !jugador.Perdido && !jugador.GanoRonda
+        && jugador.Puntos == 0 && jugador.UltimaSecuencia == 0 && jugador.VictoriasSala == 1 && jugador.Corona));
+    Verificar(!salas.Iniciar(id, 1).Success);
+    for (var jugador = 1; jugador <= 4; jugador++)
+    {
+        salas.Preparar(id, jugador, true);
+    }
+
+    salas.Iniciar(id, 1);
+    salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
+    for (var jugador = 1; jugador <= 4; jugador++)
+    {
+        salas.Mover(id, jugador, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 2 });
+    }
+
+    var segunda = salas.Obtener(id, 1).Data!;
+    registro.GuardarAsync(segunda).GetAwaiter().GetResult();
+    registro.GuardarAsync(segunda).GetAwaiter().GetResult();
+    Verificar(unidad.Partidas.Datos.Count == 2 && unidad.Resultados.Datos.Count == 8);
+    Verificar(unidad.Estadisticas.Datos.All(estadistica => estadistica.PartidasJugadas == 2));
+    Verificar(segunda.Jugadores.Count(jugador => jugador.Corona) == 1);
+    Verificar(segunda.Jugadores[0].VictoriasSala == 2);
+    var otra = salas.Crear(1, "Jugador 1", new TCrearSala { Modo = ModoJuego.Competitivo }).Data!;
+    Verificar(otra.Jugadores.All(jugador => jugador.VictoriasSala == 0 && !jugador.Corona));
 });
 Prueba("UsuarioLJ propaga un error del repositorio", () =>
 {
@@ -381,7 +445,7 @@ Prueba("El cliente HTTP convierte un 401 en una respuesta fallida", () =>
     var cliente = new TetrisApi(http);
     Verificar(!cliente.ObtenerSalaAsync(Guid.NewGuid()).GetAwaiter().GetResult().Success);
 });
-Prueba("El cliente C# conserva el contrato de login y envía Bearer", () =>
+Prueba("El cliente C# recupera la sesión y envía Bearer", () =>
 {
     var transporte = new HttpConToken();
     using var http = new HttpClient(transporte)
@@ -389,19 +453,20 @@ Prueba("El cliente C# conserva el contrato de login y envía Bearer", () =>
         BaseAddress = new Uri("http://localhost/")
     };
     var cliente = new TetrisApi(http);
-    var respuesta = cliente.LoginAsync(new TLoginUsuario
+    var respuesta = cliente.RecuperarAsync(new TRecuperarSesion
     {
-        NombreUsuario = "Prueba",
-        Contrasena = "SoloPruebas123!"
+        Credencial = new string('1', 64)
     }).GetAwaiter().GetResult();
     Verificar(respuesta.Success && respuesta.Data!.UsuarioId == 1);
     cliente.ObtenerSalaAsync(Guid.NewGuid()).GetAwaiter().GetResult();
     Verificar(transporte.Autorizado);
 });
 PruebasDefinitivas.Agregar(Prueba);
+PruebasCapacidadSalas.Agregar(Prueba);
 PruebasReglasNuevas.Agregar(Prueba);
 PruebasConfiguracionPartida.Agregar(Prueba);
 PruebasEfectosEspeciales.Agregar(Prueba);
+PruebasCuentasGoogle.Agregar(Prueba, mapper);
 var fallos = 0;
 foreach (var prueba in pruebas)
 {
@@ -511,6 +576,7 @@ sealed class RepositorioMemoria<T> : IRepositorioAD<T> where T : class
 sealed class UnidadMemoria : IUnidadTrabajoEF
 {
     public RepositorioMemoria<Usuario> Usuarios = new();
+    public IRepositorioAD<CredencialDispositivo> TCredencialDispositivo { get; } = new RepositorioMemoria<CredencialDispositivo>();
     public RepositorioMemoria<Partida> Partidas = new();
     public RepositorioMemoria<Resultado> Resultados = new();
     public RepositorioMemoria<EstadisticasJugador> Estadisticas = new();
@@ -572,6 +638,12 @@ sealed class UnidadMemoria : IUnidadTrabajoEF
         for (var i = 0; i < Usuarios.Datos.Count; i++)
         {
             Usuarios.Datos[i].UsuarioId = i + 1;
+            Usuarios.Datos[i].NombreUsuarioNormalizado = Usuarios.Datos[i].NombreUsuario.Trim().ToUpperInvariant();
+        }
+
+        foreach (var credencial in TCredencialDispositivo.Listar().Data!)
+        {
+            credencial.UsuarioId = credencial.Usuario.UsuarioId;
         }
 
         for (var i = 0; i < Partidas.Datos.Count; i++)
@@ -636,7 +708,7 @@ sealed class HttpConToken : HttpMessageHandler
     {
         var respuesta = new HttpResponseMessage(System.Net.HttpStatusCode.OK);
 
-        if (request.RequestUri!.AbsolutePath.EndsWith("login"))
+        if (request.RequestUri!.AbsolutePath.EndsWith("recuperar"))
         {
             respuesta.Content = System.Net.Http.Json.JsonContent.Create(
                 Respuesta<TAutenticacion>.Ok(new TAutenticacion

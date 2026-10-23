@@ -1,0 +1,330 @@
+/* Fondo de la pantalla */
+
+ion-content {
+    --background: #080e23;
+    --color: white;
+}
+
+.sala {
+    position: relative;
+    min-height: 100%;
+    overflow: hidden;
+
+    background-image:
+        linear-gradient(#080e2355, #080e2355),
+        url('/assets/fondo-salas.png');
+
+    background-position: center bottom;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+
+/* Contenedor de las piezas */
+
+.piezas-fondo {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+
+/* Estilo general de las piezas */
+
+.pieza {
+    position: absolute;
+    top: -100px;
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 22px);
+    grid-template-rows: repeat(2, 22px);
+
+    gap: 3px;
+
+    animation: caer 12s linear infinite;
+}
+
+.pieza span {
+    border-radius: 3px;
+
+    background: currentColor;
+
+    box-shadow:
+        inset 2px 2px 0 #ffffff40;
+}
+
+
+/* Pieza T */
+
+.pieza-t {
+    left: 15%;
+    color: #b08cff;
+
+    transform: rotate(-15deg);
+
+    animation-duration: 11s;
+    animation-delay: -1s;
+}
+
+.pieza-t span:nth-child(1) {
+    grid-column: 2;
+}
+
+.pieza-t span:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1;
+}
+
+.pieza-t span:nth-child(3) {
+    grid-row: 2;
+    grid-column: 2;
+}
+
+.pieza-t span:nth-child(4) {
+    grid-row: 2;
+    grid-column: 3;
+}
+
+
+/* Pieza L */
+
+.pieza-l {
+    left: 75%;
+    color: #52e2ec;
+
+    transform: rotate(15deg);
+
+    animation-duration: 14s;
+    animation-delay: -7s;
+}
+
+.pieza-l span:nth-child(1) {
+    grid-column: 3;
+}
+
+.pieza-l span:nth-child(2) {
+    grid-row: 2;
+    grid-column: 1;
+}
+
+.pieza-l span:nth-child(3) {
+    grid-row: 2;
+    grid-column: 2;
+}
+
+.pieza-l span:nth-child(4) {
+    grid-row: 2;
+    grid-column: 3;
+}
+
+
+/* Pieza cuadrada */
+
+.pieza-o {
+    left: 45%;
+    color: #ffcf70;
+
+    grid-template-columns: repeat(2, 22px);
+
+    transform: rotate(-10deg);
+
+    animation-duration: 16s;
+    animation-delay: -10s;
+}
+
+
+/* Animación de caída */
+
+@keyframes caer {
+
+    0% {
+        top: -100px;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 0.55;
+    }
+
+    90% {
+        opacity: 0.55;
+    }
+
+    100% {
+        top: 105%;
+        opacity: 0;
+    }
+
+}
+
+
+/* Texto de la pantalla */
+
+.contenido {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+
+    min-height: 100%;
+
+    padding: 30px;
+
+    text-align: center;
+
+    pointer-events: auto;;
+}
+
+.contenido h1 {
+    color: white;
+    font-size: 32px;
+}
+
+.contenido p {
+    color: #b5bce0;
+    font-size: 15px;
+}
+
+
+/* Reducir animaciones si el dispositivo lo solicita */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .pieza {
+        animation: none;
+        opacity: 0.3;
+        top: 15%;
+    }
+
+}
+
+/* Opciones para entrar a una sala */
+
+.opciones-sala {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 15px;
+    width: 100%;
+    max-width: 850px;
+
+    margin-top: 35px;
+}
+
+
+/* Diseño general de los botones */
+
+.boton-sala {
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 12px;
+
+    min-height: 180px;
+    padding: 20px;
+
+    border: 1px solid #ffffff30;
+    border-radius: 18px;
+
+    background: #151d35e8;
+    color: white;
+
+    cursor: pointer;
+
+    transition:
+        background 0.3s,
+        transform 0.3s;
+}
+
+
+/* Colores según el tipo de sala */
+
+.crear {
+    border-top: 3px solid #b08cff;
+}
+
+.publica {
+    border-top: 3px solid #52e2ec;
+}
+
+.privada {
+    border-top: 3px solid #ffcf70;
+}
+
+
+/* Efecto al pasar el mouse */
+
+@media (hover: hover) {
+
+    .boton-sala:hover {
+        transform: translateY(-5px);
+        background: #252f50;
+    }
+
+}
+
+
+/* Efecto al seleccionar con teclado */
+
+.boton-sala:focus-visible {
+    outline: 3px solid #52e2ec;
+    outline-offset: 3px;
+}
+
+
+/* Iconos */
+
+.icono {
+    font-size: 30px;
+}
+
+
+/* Títulos de los botones */
+
+.titulo-boton {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+
+/* Descripción de cada botón */
+
+.descripcion-boton {
+    color: #aab5d0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+
+/* Mensaje de prueba */
+
+.mensaje-opcion {
+    margin-top: 25px;
+    color: #b08cff;
+    font-size: 14px;
+}
+
+
+/* Adaptación para celulares */
+
+@media (max-width: 650px) {
+
+    .opciones-sala {
+        grid-template-columns: 1fr;
+        max-width: 350px;
+    }
+
+    .boton-sala {
+        min-height: 110px;
+        gap: 6px;
+    }
+
+}

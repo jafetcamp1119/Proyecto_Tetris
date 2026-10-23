@@ -33,6 +33,7 @@ internal sealed class SalaMemoria
 {
     public readonly object Cerrojo = new();
     public Guid Id = Guid.NewGuid();
+    public int NumeroRonda = 1;
     public int Creador;
     public int Maximo;
     public int Turno;

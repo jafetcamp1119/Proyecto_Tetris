@@ -1,79 +1,88 @@
-import { Component } from '@angular/core';
+import { mensajeParaJugador } from '../servicios/mensajes-jugador';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
+import { AutenticacionServicio } from '../servicios/autenticacion.servicio';
+import { GoogleAccesoComponent } from '../componentes/google-acceso.component';
 
 @Component({
-  selector: 'app-login',
-  templateUrl: './login.page.html',
-  styleUrls: ['./login.page.scss'],
-  standalone: true,
-  imports: [FormsModule, IonContent],
+    selector: 'app-login',
+    templateUrl: './login.page.html',
+    styleUrls: ['./login.page.scss'],
+    standalone: true,
+    imports: [FormsModule, IonContent, GoogleAccesoComponent]
 })
 export class LoginPage {
-  usuario = '';
-  contrasena = '';
-  mostrarContrasena = false;
-  mensaje = '';
-  cargando = false;
+    readonly acceso = inject(AutenticacionServicio);
+    private readonly router = inject(Router);
+    private readonly vista = inject(ChangeDetectorRef);
+    private entradaIniciada = false;
+    usuario = '';
+    mensaje = '';
+    cargando = false;
+    codigoRecuperacion = '';
+    visible = false;
 
-  constructor(private router: Router) {}
-
-  async ingresar() {
-    if (this.cargando) return;
-
-    if (!this.usuario.trim() || !this.contrasena) {
-      this.mensaje = 'Escriba su usuario y contraseña.';
-      return;
+    ngOnInit(): void {
+        void this.ionViewWillEnter();
     }
 
-    this.cargando = true;
-    this.mensaje = 'Iniciando sesión...';
-
-    try {
-      // Envía las credenciales a la API.
-      const respuesta = await fetch(
-        'http://localhost:5186/api/usuarios/login',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nombreUsuario: this.usuario.trim(),
-            contrasena: this.contrasena,
-          }),
+    async ionViewWillEnter(): Promise<void> {
+        if (this.entradaIniciada) {
+            return;
         }
-      );
-
-      const resultado = await respuesta.json();
-
-      if (!respuesta.ok || !resultado.success) {
-        this.mensaje =
-          resultado.error || 'No se pudo iniciar sesión.';
-        return;
-      }
-
-      const sesion = resultado.data;
-
-      if (!sesion?.token) {
-        this.mensaje = 'La API no devolvió el token de acceso.';
-        return;
-      }
-
-      // Conserva el token durante esta sesión del navegador.
-      sessionStorage.setItem('token', sesion.token);
-      sessionStorage.setItem('expiraEnUtc', sesion.expiraEnUtc);
-
-      this.contrasena = '';
-      this.mensaje = 'Inicio de sesión correcto.';
-
-      await this.router.navigateByUrl('/home');
-    } catch {
-      this.mensaje =
-        'No se pudo completar la conexión. Revise que la API siga abierta y que permita el origen de Ionic en CORS.';
-    } finally {
-      this.cargando = false;
+        this.entradaIniciada = true;
+        try {
+            await this.acceso.inicializar();
+            if (this.acceso.sesion()) {
+                await this.continuar();
+                return;
+            }
+            this.visible = true;
+        } catch (error) {
+            this.mensaje = mensajeParaJugador(error, 'No se pudo recuperar la sesión.');
+            this.visible = true;
+        } finally {
+            this.vista.markForCheck();
+        }
     }
-  }
+
+    ionViewDidLeave(): void {
+        this.visible = false;
+        this.entradaIniciada = false;
+    }
+
+    async continuar(): Promise<void> {
+        await this.router.navigateByUrl('/home', { replaceUrl: true });
+    }
+
+    async ingresar(): Promise<void> {
+        await this.ejecutar(() => this.acceso.registrar(this.usuario.trim()));
+    }
+
+    async seleccionar(usuarioId: number): Promise<void> {
+        await this.ejecutar(() => this.acceso.seleccionar(usuarioId));
+    }
+
+    async recuperar(): Promise<void> {
+        await this.ejecutar(() => this.acceso.recuperarCodigo(this.codigoRecuperacion));
+        this.codigoRecuperacion = '';
+    }
+
+    private async ejecutar(accion: () => Promise<void>): Promise<void> {
+        if (this.cargando) {
+            return;
+        }
+        this.cargando = true;
+        try {
+            await accion();
+            await this.continuar();
+        } catch (error) {
+            this.mensaje = mensajeParaJugador(error, 'No se pudo ingresar.');
+        } finally {
+            this.cargando = false;
+            this.vista.markForCheck();
+        }
+    }
 }

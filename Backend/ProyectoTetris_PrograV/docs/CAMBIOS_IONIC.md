@@ -1,3 +1,5 @@
+> Acceso actualizado: usar únicamente nickname y credencial de dispositivo. El login con contraseña y cookies quedó retirado. Ver [usuarios, coronas y rondas](USUARIOS_CORONAS_RONDAS.md) y los contratos TypeScript actualizados. Los ejemplos anteriores de login de este documento son históricos.
+
 # Cambios para Ionic y legibilidad
 
 Se trabajó sobre los siete proyectos existentes, sin reconstruir la solución.

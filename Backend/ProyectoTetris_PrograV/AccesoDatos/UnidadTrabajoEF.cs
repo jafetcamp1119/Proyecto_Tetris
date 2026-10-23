@@ -14,6 +14,7 @@ public class UnidadTrabajoEF : IUnidadTrabajoEF
     {
         this.contexto = contexto;
         this.TUsuario = new RepositorioAD<Usuario>(contexto);
+        this.TCredencialDispositivo = new RepositorioAD<CredencialDispositivo>(contexto);
         this.TConfiguracion = new RepositorioAD<ConfiguracionJugador>(contexto);
         this.TPartida = new RepositorioAD<Partida>(contexto);
         this.TParticipante = new RepositorioAD<ParticipantesPartidum>(contexto);
@@ -24,6 +25,7 @@ public class UnidadTrabajoEF : IUnidadTrabajoEF
     }
 
     public IRepositorioAD<Usuario> TUsuario { get; }
+    public IRepositorioAD<CredencialDispositivo> TCredencialDispositivo { get; }
     public IRepositorioAD<ConfiguracionJugador> TConfiguracion { get; }
     public IRepositorioAD<Partida> TPartida { get; }
     public IRepositorioAD<ParticipantesPartidum> TParticipante { get; }

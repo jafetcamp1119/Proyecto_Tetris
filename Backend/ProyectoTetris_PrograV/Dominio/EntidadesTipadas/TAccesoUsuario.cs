@@ -4,21 +4,21 @@ namespace Dominio.EntidadesTipadas;
 
 public class TRegistroUsuario
 {
-    [Required, StringLength(50, MinimumLength = 3)]
+    [Required, StringLength(50)]
     public string NombreUsuario { get; set; } = "";
-
-    [Required, EmailAddress, StringLength(100)]
-    public string Correo { get; set; } = "";
-
-    [Required, StringLength(100, MinimumLength = 8)]
-    public string Contrasena { get; set; } = "";
 }
 
-public class TLoginUsuario
+public class TRecuperarSesion
 {
-    [Required]
-    public string NombreUsuario { get; set; } = "";
+    [Required, StringLength(64, MinimumLength = 64)]
+    public string Credencial { get; set; } = "";
+}
 
-    [Required]
-    public string Contrasena { get; set; } = "";
+// Resultado interno. El controlador publica solamente TAutenticacion.
+public class TSesionJugador
+{
+    public TUsuario Usuario { get; set; } = new();
+    public Guid SesionId { get; set; }
+    public string? Credencial { get; set; }
+    public DateTime CredencialExpiraEnUtc { get; set; }
 }

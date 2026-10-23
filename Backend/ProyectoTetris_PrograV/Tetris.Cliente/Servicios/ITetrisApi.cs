@@ -6,8 +6,8 @@ namespace Tetris.Cliente.Servicios;
 // Cliente C# independiente, conservado como referencia. El frontend Ionic consume HTTP con TypeScript.
 public interface ITetrisApi
 {
-    Task<Respuesta<TUsuario>> RegistrarAsync(TRegistroUsuario datos, CancellationToken ct = default);
-    Task<Respuesta<TUsuario>> LoginAsync(TLoginUsuario datos, CancellationToken ct = default);
+    Task<Respuesta<TAutenticacion>> RegistrarAsync(TRegistroUsuario datos, CancellationToken ct = default);
+    Task<Respuesta<TAutenticacion>> RecuperarAsync(TRecuperarSesion datos, CancellationToken ct = default);
     Task LogoutAsync(CancellationToken ct = default);
     Task<Respuesta<TSala>> CrearSalaAsync(TCrearSala datos, CancellationToken ct = default);
     Task<Respuesta<TSala>> UnirseAsync(Guid sala, CancellationToken ct = default);
