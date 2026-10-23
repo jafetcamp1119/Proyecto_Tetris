@@ -1,0 +1,398 @@
+/* Fondo */
+:host {
+  display: block;
+  color: #f4f6ff;
+}
+
+ion-content {
+  --background: #090e1c;
+}
+
+.login {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 56px 28px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 10% 30%, #7040ff20, transparent 55%),
+    radial-gradient(ellipse at 95% 85%, #23d4df14, transparent 50%),
+    #090e1c;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image:
+      linear-gradient(#ffffff05 1px, transparent 1px),
+      linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+    background-size: 38px 38px;
+    pointer-events: none;
+  }
+}
+
+.contenedor {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  align-items: center;
+  gap: 80px;
+  width: 100%;
+  max-width: 1060px;
+}
+
+/* Presentación */
+.etiqueta,
+.bienvenida {
+  color: #aaa2ed;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+h1 {
+  display: flex;
+  margin: 24px 0;
+  font-family: "Arial Black", Arial, sans-serif;
+  font-size: clamp(60px, 7.5vw, 100px);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -5px;
+
+  span:nth-child(1) { color: #52e2ec; }
+  span:nth-child(2) { color: #b08cff; }
+  span:nth-child(3) { color: #ff85b8; }
+  span:nth-child(4) { color: #ffba77; }
+  span:nth-child(5) { color: #ffe184; }
+  span:nth-child(6) { color: #82e6b6; }
+}
+
+.presentacion h2 {
+  margin: 0 0 18px;
+  color: #f4f6ff;
+  font-size: clamp(25px, 3vw, 36px);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -1px;
+}
+
+.presentacion p {
+  max-width: 390px;
+  margin: 0;
+  color: #a4aec6;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.modos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+
+  span {
+    padding: 8px 12px;
+    border: 1px solid #ffffff18;
+    border-radius: 8px;
+    background: #ffffff04;
+    color: #c1c9dc;
+    font-size: 11px;
+  }
+}
+
+/* Tarjeta */
+.tarjeta {
+  padding: 38px;
+  border: 1px solid #ffffff18;
+  border-radius: 26px;
+  background: linear-gradient(145deg, #1a2238, #11182a);
+  box-shadow: 0 28px 80px #00000040;
+}
+
+.marca {
+  display: grid;
+  grid-template-columns: repeat(3, 12px);
+  grid-template-rows: repeat(2, 12px);
+  gap: 3px;
+  width: fit-content;
+  margin-bottom: 24px;
+
+  span {
+    border-radius: 2px;
+    background: #b08cff;
+  }
+
+  span:first-child {
+    grid-column: 2;
+  }
+
+  span:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  span:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  span:nth-child(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+.tarjeta h2 {
+  margin: 12px 0 8px;
+  color: #f4f6ff;
+  font-size: 32px;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+
+.descripcion {
+  margin: 0 0 30px;
+  color: #a4aec6;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Campos */
+label {
+  display: block;
+  margin: 20px 0 9px;
+  color: #dce2f2;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 52px;
+  padding: 0 15px;
+  border: 1px solid #35405c;
+  border-radius: 11px;
+  outline: none;
+  background: #0c1324;
+  color: #f4f6ff;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &::placeholder {
+    color: #8390ad;
+  }
+
+  &:focus {
+    border-color: #af8aff;
+    box-shadow: 0 0 0 3px #af8aff20;
+  }
+}
+
+.campo-contrasena {
+  position: relative;
+
+  input {
+    padding-right: 80px;
+  }
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid #72e4ef;
+    outline-offset: 4px;
+  }
+}
+
+.ver {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #c6afff;
+  font-size: 12px;
+}
+
+.entrar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 28px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 11px;
+  background: #b08cff;
+  color: #110b23;
+  font-size: 14px;
+  font-weight: 800;
+
+  &:hover:not(:disabled) {
+    background: #c3a7ff;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  span {
+    font-size: 22px;
+  }
+}
+
+.mensaje {
+  margin: 14px 0 0;
+  color: #f4d28b;
+  font-size: 13px;
+  line-height: 1.6;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.pie-tarjeta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #ffffff0d;
+  color: #99a5c0;
+  font-size: 11px;
+
+  span {
+    color: #52e2ec;
+  }
+}
+
+/* Bloques de fondo */
+.piezas {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pieza {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  grid-template-rows: repeat(2, 32px);
+  gap: 4px;
+  opacity: 0.16;
+
+  i {
+    border-radius: 4px;
+    background: currentColor;
+    box-shadow: inset 3px 3px 0 #ffffff25;
+  }
+}
+
+.pieza-t,
+.pieza-l {
+  i:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  i:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  i:nth-child(4) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+.pieza-t {
+  top: 7%;
+  left: 8%;
+  color: #b08cff;
+  transform: rotate(-15deg);
+
+  i:first-child {
+    grid-column: 2;
+  }
+}
+
+.pieza-o {
+  right: 5%;
+  top: 9%;
+  grid-template-columns: repeat(2, 32px);
+  color: #ffcf70;
+  transform: rotate(15deg);
+}
+
+.pieza-l {
+  bottom: 6%;
+  left: 38%;
+  color: #52e2ec;
+  transform: rotate(12deg);
+
+  i:first-child {
+    grid-column: 3;
+  }
+}
+
+/* Pantallas pequeñas */
+@media (max-width: 800px) {
+  .login {
+    padding: 36px 20px;
+  }
+
+  .contenedor {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    max-width: 440px;
+  }
+
+  .presentacion {
+    text-align: center;
+  }
+
+  h1,
+  .modos {
+    justify-content: center;
+  }
+
+  h1 {
+    margin: 16px 0;
+    font-size: 64px;
+  }
+
+  .presentacion h2 {
+    font-size: 25px;
+  }
+
+  .presentacion p {
+    margin: 0 auto;
+    font-size: 14px;
+  }
+
+  .modos {
+    margin-top: 20px;
+  }
+
+  .tarjeta {
+    padding: 28px 24px;
+  }
+}
+
