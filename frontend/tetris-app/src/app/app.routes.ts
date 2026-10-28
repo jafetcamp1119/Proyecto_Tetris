@@ -4,6 +4,10 @@ import { PartidaPage } from './pages/partida/partida.page';
 
 export const routes: Routes = [
     {
+        path: 'privacidad', pathMatch: 'full',
+        loadComponent: () => import('./pages/privacidad/privacidad.page').then(m => m.PrivacidadPage)
+    },
+    {
         path: 'ajustes', canActivate: [sesionGuard],
         loadComponent: () => import('./pages/ajustes/ajustes.page').then(m => m.AjustesPage)
     },

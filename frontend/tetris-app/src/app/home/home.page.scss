@@ -322,3 +322,6 @@ footer {
   }
 }
 
+
+footer a { color: #c6afff; text-underline-offset: 4px; }
+footer a:focus-visible { outline: 3px solid #72e4ef; outline-offset: 4px; }

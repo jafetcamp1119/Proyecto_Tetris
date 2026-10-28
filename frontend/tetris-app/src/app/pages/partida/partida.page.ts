@@ -1,9 +1,10 @@
 import { mensajeParaJugador } from '../../servicios/mensajes-jugador';
-import { ChangeDetectorRef, Component, HostListener, effect, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnInit, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
 import { ICrearSala, ISala, ITablero, ITipoPiezaEspecial, Movimiento } from '../../modelos/tetris.model';
+import { OrientacionServicio } from '../../servicios/orientacion.servicio';
 import { SalasServicio } from '../../servicios/salas.servicio';
 import { AutenticacionServicio } from '../../servicios/autenticacion.servicio';
 import { TableroComponent } from '../../componentes/tablero.component';
@@ -12,19 +13,31 @@ import { ConfiguracionSalaComponent, validarConfiguracion } from '../../componen
 import { PiezasEspecialesComponent } from '../../componentes/piezas-especiales.component';
 import { efectoDePieza, motivoFinal, nombreModo, nombresEfectos } from '../../modelos/presentacion-juego';
 import { DialogosServicio } from '../../servicios/dialogos.servicio';
+import { SiguientePiezaComponent } from '../../componentes/siguiente-pieza.component';
+import { CodigoRecuperacionComponent } from '../../componentes/codigo-recuperacion.component';
+import { ApiServicio } from '../../servicios/api.servicio';
+import { RepetidorEntrada } from '../../servicios/repetidor-entrada';
+import { RendimientoServicio } from '../../servicios/rendimiento.servicio';
+import { CodigoSalaComponent } from '../../componentes/codigo-sala.component';
 
 @Component({
     standalone: true,
-    imports: [FormsModule, IonContent, TableroComponent, ControlesComponent, ConfiguracionSalaComponent, PiezasEspecialesComponent],
+    imports: [FormsModule, IonContent, TableroComponent, ControlesComponent, ConfiguracionSalaComponent, PiezasEspecialesComponent, SiguientePiezaComponent, CodigoRecuperacionComponent, CodigoSalaComponent],
     templateUrl: './partida.page.html'
 })
-export class PartidaPage {
+export class PartidaPage implements OnInit, OnDestroy {
     readonly salas = inject(SalasServicio);
     readonly acceso = inject(AutenticacionServicio);
+    private readonly orientacion = inject(OrientacionServicio);
     private readonly ruta = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly vista = inject(ChangeDetectorRef);
     private readonly dialogos = inject(DialogosServicio);
+    private readonly api = inject(ApiServicio);
+    private readonly rendimiento = inject(RendimientoServicio);
+    private contextoEntrada = '';
+    private readonly entrada = new RepetidorEntrada(movimiento => { void this.mover(movimiento); },
+        () => this.visible && !this.orientacion.requiereVertical() && this.salas.puedeMover());
     private entradaIniciada = false;
     private reloj?: ReturnType<typeof setInterval>;
     private diferenciaServidor = 0;
@@ -50,6 +63,9 @@ export class PartidaPage {
 
     constructor() {
         effect(() => {
+            const sala = this.salas.sala();
+            const contexto = `${sala?.id}:${sala?.numeroRonda}:${sala?.usuarioTurno}:${this.salas.puedeMover()}:${this.orientacion.requiereVertical()}`;
+            if (contexto !== this.contextoEntrada) { this.entrada.soltar(); this.contextoEntrada = contexto; }
             const pausa = this.salas.sala()?.pausa;
             if (pausa) {
                 this.diferenciaServidor = Date.parse(pausa.ahoraServidorUtc) - Date.now();
@@ -76,16 +92,24 @@ export class PartidaPage {
         return this.salas.sala()?.creadorId === this.usuarioId;
     }
 
+    get espectador(): boolean {
+        return this.salas.sala()?.jugadores.find(jugador => jugador.usuarioId === this.usuarioId)?.perdido ?? false;
+    }
+
     get tablero(): ITablero | undefined {
         const sala = this.salas.sala();
         if (!sala || sala.modo === 'Compartido') {
-            return sala?.tableros[0];
+            return (this.salas.puedeMover() ? this.salas.tableroVisual() : null) ?? sala?.tableros[0];
         }
         const propio = sala.tableros.find(t => t.usuarioId === this.usuarioId);
         if (propio && !propio.perdido) {
-            return propio;
+            return (this.salas.puedeMover() ? this.salas.tableroVisual() : null) ?? propio;
         }
         return sala.tableros.find(t => t.usuarioId === this.observando) || propio;
+    }
+
+    get puntosJugador(): number {
+        return this.salas.sala()?.jugadores.find(j => j.usuarioId === this.usuarioId)?.puntos ?? 0;
     }
 
     get estadoJugador(): string {
@@ -113,6 +137,7 @@ export class PartidaPage {
     }
 
     async ionViewDidLeave(): Promise<void> {
+        this.entrada.soltar();
         this.visible = false;
         this.entradaIniciada = false;
         clearInterval(this.reloj);
@@ -120,13 +145,15 @@ export class PartidaPage {
     }
 
     ngOnDestroy(): void {
+        this.entrada.soltar();
         this.visible = false;
         clearInterval(this.reloj);
         void this.salas.desconectar(this.ruta.snapshot.paramMap.get('id')!);
     }
 
-    async reconectar(): Promise<void> {
+    async reconectar(actualizarConexion = false): Promise<void> {
         await this.ejecutar(async () => {
+            if (actualizarConexion) { await this.api.actualizarConexion(); }
             await this.salas.conectar(this.ruta.snapshot.paramMap.get('id')!);
             if (this.salas.sala()?.modo === 'Compartido') {
                 this.catalogo = await this.acceso.solicitar<ITipoPiezaEspecial[]>('/api/salas/tipos-especiales');
@@ -145,14 +172,30 @@ export class PartidaPage {
 
     @HostListener('window:keydown', ['$event'])
     teclado(evento: KeyboardEvent): void {
-        if (!this.visible || !this.salas.puedeMover() || (evento.target as HTMLElement).matches('input,select,textarea,button')) {
+        this.rendimiento.registrarEvento(evento.timeStamp);
+        if (this.orientacion.requiereVertical() || !this.visible || !this.salas.puedeMover() || evento.ctrlKey || evento.metaKey || evento.altKey
+            || (evento.target instanceof Element && evento.target.closest('input,select,textarea,button,[contenteditable="true"]'))) {
             return;
         }
         const movimientos: Record<string, Movimiento> = { ArrowLeft: 'Izquierda', ArrowRight: 'Derecha', ArrowUp: 'Rotar', ArrowDown: 'Bajar', ' ': 'Caer' };
         if (movimientos[evento.key]) {
             evento.preventDefault();
-            void this.mover(movimientos[evento.key]);
+            if (!evento.repeat) { this.entrada.presionar(movimientos[evento.key]); }
         }
+    }
+
+    @HostListener('window:keyup', ['$event'])
+    liberarTecla(evento: KeyboardEvent): void {
+        const movimientos: Record<string, Movimiento> = { ArrowLeft: 'Izquierda', ArrowRight: 'Derecha', ArrowDown: 'Bajar', ArrowUp: 'Rotar', ' ': 'Caer' };
+        const movimiento = movimientos[evento.key];
+        if (movimiento) { this.entrada.soltar(movimiento); }
+    }
+
+    @HostListener('window:blur')
+    @HostListener('document:visibilitychange')
+    soltarEntradas(): void {
+        this.entrada.soltar();
+        this.salas.suspenderPrediccion();
     }
 
     async accion(nombre: string, cuerpo?: unknown, metodo = 'POST'): Promise<void> {
@@ -190,6 +233,8 @@ export class PartidaPage {
     }
 
     async puedeSalir(): Promise<boolean> {
+        // La expulsión local no es un abandono voluntario del creador ni envía Abandonar.
+        if (!this.acceso.sesion()) { return true; }
         const sala = this.salas.sala();
         if (!sala) {
             if (sessionStorage.getItem('tetrisSala')) {

@@ -35,10 +35,7 @@
                 }
             }
             <button class="accion" (click)="guardarCuenta()">Guardar mi cuenta con código privado</button>
-            @if (codigo) {
-                <p>Guardá este código fuera de la aplicación. Vence en un año y se consume al recuperarlo.</p>
-                <code class="codigo-privado">{{ codigo }}</code>
-            }
+            <app-codigo-recuperacion />
             <div class="acciones">
                 <button class="accion secundaria" (click)="cambiarJugador()">Cambiar de jugador</button>
                 <button class="accion peligro" (click)="cerrarSesion()">Cerrar sesión</button>

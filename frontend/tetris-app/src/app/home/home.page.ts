@@ -2,13 +2,14 @@ import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonContent, IonButton } from '@ionic/angular';
 import { AutenticacionServicio } from '../servicios/autenticacion.servicio';
+import { CodigoRecuperacionComponent } from '../componentes/codigo-recuperacion.component';
 
 @Component({
     selector: 'app-home',
     templateUrl: 'home.page.html',
     styleUrls: ['home.page.scss'],
     standalone: true,
-    imports: [IonContent, IonButton]
+    imports: [IonContent, IonButton, CodigoRecuperacionComponent]
 })
 export class HomePage {
     readonly acceso = inject(AutenticacionServicio);

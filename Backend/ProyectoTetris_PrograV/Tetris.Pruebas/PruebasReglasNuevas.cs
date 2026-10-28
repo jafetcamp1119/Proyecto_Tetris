@@ -24,6 +24,7 @@ internal static class PruebasReglasNuevas
         AgregarDuracionYCongelamiento(prueba);
         AgregarPausaIndividual(prueba);
         AgregarSalasPrivadas(prueba);
+        AgregarCodigosDeTodasLasSalas(prueba);
     }
 
     private static void Verificar(bool condicion, string mensaje = "La condición esperada no se cumplió.")
@@ -588,6 +589,97 @@ internal static class PruebasReglasNuevas
         return salas.Crear(1, "Ana", datos).Data!.Id;
     }
 
+    private static void AgregarCodigosDeTodasLasSalas(Action<string, Action> prueba)
+    {
+        foreach (var (modo, privada) in new[] { (ModoJuego.Compartido, false), (ModoJuego.Compartido, true),
+            (ModoJuego.Competitivo, false), (ModoJuego.Competitivo, true) })
+        {
+            prueba($"Anfitrión e invitado reciben el mismo código por creación, consulta y conexión ({modo}, privada={privada})", () =>
+            {
+                var salas = new SalaLJ(new MotorControlado());
+                var creada = salas.Crear(1, "Ana", new TCrearSala { Modo = modo, Privada = privada }).Data!;
+                Verificar(creada.Codigo.Length == 6);
+                var invitado = salas.UnirsePorCodigo(creada.Codigo, 2, "Beto").Data!;
+                Verificar(invitado.Codigo == creada.Codigo);
+                Verificar(salas.Obtener(creada.Id, 1).Data!.Codigo == creada.Codigo);
+                Verificar(salas.Obtener(creada.Id, 2).Data!.Codigo == creada.Codigo);
+                Verificar(salas.Conectar(creada.Id, 1, "anfitrion").Data!.Codigo == creada.Codigo);
+                Verificar(salas.Conectar(creada.Id, 2, "invitado").Data!.Codigo == creada.Codigo);
+                salas.Desconectar("anfitrion");
+                Verificar(salas.Conectar(creada.Id, 1, "reconexion").Data!.Codigo == creada.Codigo);
+            });
+        }
+        prueba("Las salas públicas tienen código de seis caracteres y permiten lista y código", () =>
+        {
+            var salas = new SalaLJ(new MotorControlado());
+            var sala = salas.Crear(1, "Ana", new TCrearSala { Modo = ModoJuego.Compartido }).Data!;
+            Verificar(sala.Codigo.Length == 6);
+            Verificar(salas.ListarPublicas().Single().Codigo == sala.Codigo);
+            Verificar(salas.UnirsePorCodigo(" " + sala.Codigo.ToLowerInvariant() + " ", 2, "Beto").Success);
+            Verificar(salas.Unirse(sala.Id, 3, "Carlos").Success);
+            Verificar(salas.UnirsePorCodigo(sala.Codigo, 4, "Diana").Success);
+            Verificar(!salas.UnirsePorCodigo(sala.Codigo, 5, "Extra").Success);
+        });
+        prueba("Los códigos públicos y privados no colisionan en creaciones simultáneas", () =>
+        {
+            var salas = new SalaLJ(new MotorControlado());
+            var codigos = new System.Collections.Concurrent.ConcurrentBag<string>();
+            Parallel.For(1, 1001, i =>
+            {
+                var sala = salas.Crear(i, "Jugador", new TCrearSala
+                {
+                    Modo = ModoJuego.Competitivo, Privada = i % 2 == 0
+                }).Data!;
+                codigos.Add(sala.Codigo);
+            });
+            Verificar(codigos.Count == 1000 && codigos.Distinct().Count() == 1000);
+        });
+        foreach (var privada in new[] { false, true })
+        {
+            prueba($"Código estable al iniciar y reconectar; cierre lo invalida (privada={privada})", () =>
+            {
+                var salas = new SalaLJ(new MotorControlado());
+                var sala = salas.Crear(1, "Ana", new TCrearSala { Modo = ModoJuego.Competitivo, Privada = privada }).Data!;
+                Verificar(salas.UnirsePorCodigo(sala.Codigo, 2, "Beto").Success);
+                salas.Conectar(sala.Id, 1, "a");
+                salas.Conectar(sala.Id, 2, "b");
+                salas.Preparar(sala.Id, 1, true);
+                salas.Preparar(sala.Id, 2, true);
+                var iniciada = salas.Iniciar(sala.Id, 1);
+                Verificar(iniciada.Success && iniciada.Data!.Codigo == sala.Codigo);
+                Verificar(!salas.UnirsePorCodigo(sala.Codigo, 3, "Nuevo").Success);
+                Verificar(salas.Conectar(sala.Id, 2, "otra").Data!.Codigo == sala.Codigo);
+                salas.Abandonar(sala.Id, 1);
+                salas.Abandonar(sala.Id, 2);
+                Verificar(!salas.UnirsePorCodigo(sala.Codigo, 3, "Nuevo").Success);
+            });
+        }
+        prueba("Individual no genera código de invitación y conserva su identificador y juego", () =>
+        {
+            var salas = new SalaLJ(new MotorControlado());
+            var sala = salas.Crear(1, "Ana", new TCrearSala { Modo = ModoJuego.Individual, Privada = true }).Data!;
+            Verificar(sala.Id != Guid.Empty && sala.Codigo == string.Empty && sala.CodigoPrivado == null);
+            Verificar(sala.MaximoJugadores == 1 && !sala.Privada);
+            Verificar(!salas.UnirsePorCodigo(sala.Codigo, 2, "Beto").Success);
+            Verificar(!salas.UnirsePorCodigo("CP8CQQ", 2, "Beto").Success);
+            var codigoLegado = sala.Id.ToString("N")[..12];
+            Verificar(!salas.UnirsePorCodigo(codigoLegado, 2, "Beto").Success);
+            Verificar(!salas.UnirsePorCodigo(codigoLegado, 1, "Ana").Success);
+            Verificar(!salas.Unirse(sala.Id, 2, "Beto").Success);
+            Verificar(salas.ListarPublicas().Length == 0);
+            salas.Conectar(sala.Id, 1, "original");
+            salas.Preparar(sala.Id, 1, true);
+            Verificar(salas.Iniciar(sala.Id, 1).Success);
+            var movida = salas.Mover(sala.Id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
+            Verificar(movida.Success && movida.Data!.Codigo == string.Empty);
+            salas.Desconectar("original");
+            var recuperada = salas.Conectar(sala.Id, 1, "reconexion").Data!;
+            Verificar(recuperada.Id == sala.Id && recuperada.Codigo == string.Empty);
+            Verificar(recuperada.Jugadores[0].Puntos == movida.Data!.Jugadores[0].Puntos);
+            Verificar(recuperada.Jugadores[0].UltimaSecuencia == 1);
+        });
+    }
+
     private static void AgregarSalasPrivadas(Action<string, Action> prueba)
     {
         prueba("Una sala privada recibe un código aleatorio de seis caracteres del servidor", () =>
@@ -648,7 +740,7 @@ internal static class PruebasReglasNuevas
             var salas = new SalaLJ(new MotorControlado());
             var creada = salas.Crear(1, "Ana", new TCrearSala { Modo = ModoJuego.Competitivo, Privada = true }).Data!;
             Verificar(!salas.Unirse(creada.Id, 2, "Beto").Success);
-            Verificar(!salas.UnirsePorCodigo(creada.Codigo, 2, "Beto").Success);
+            Verificar(!salas.UnirsePorCodigo(creada.Id.ToString("N")[..12], 2, "Beto").Success);
             Verificar(salas.Unirse(creada.Id, 1, "Ana").Success, "El creador sigue dentro de su sala.");
         });
         prueba("Un código privado inexistente o mal formado se rechaza", () =>

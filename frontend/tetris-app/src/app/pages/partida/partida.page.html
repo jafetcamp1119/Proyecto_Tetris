@@ -1,21 +1,23 @@
 <ion-content [scrollY]="salas.sala()?.estado !== 'EnCurso'">
-    <main class="pantalla-tetris pantalla-partida">
+    <main class="pantalla-tetris pantalla-partida" [class.en-curso]="salas.sala()?.estado === 'EnCurso'">
         <nav class="acciones">
             <button class="accion secundaria" (click)="salir()">← Salir al menú</button>
             <span role="status">{{ salas.mensajeConexion() }}</span>
             @if (!salas.conectado()) {
-                <button class="accion" [disabled]="ocupado" (click)="reconectar()">Reconectar</button>
+                <button class="accion" [disabled]="ocupado" (click)="reconectar(true)">Reconectar</button>
             }
         </nav>
         <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+        <app-codigo-recuperacion />
         @if (salas.sala(); as sala) {
             <h1>{{ nombreModo(sala.modo) }} · Ronda {{ sala.numeroRonda }}</h1>
+            @if ((sala.modo === 'Compartido' || sala.modo === 'Competitivo') && sala.estado !== 'Cancelada') {
+                <app-codigo-sala [codigo]="sala.codigo" />
+            }
             @if (sala.estado === 'Esperando') {
                 <section class="tarjeta-tetris">
                     <h2>{{ sala.modo === 'Individual' ? 'Prepará tu partida' : 'Sala de espera' }}</h2>
-                    @if (sala.modo !== 'Individual') {
-                        <p>{{ sala.privada ? 'Código privado: ' + sala.codigoPrivado : 'Sala pública' }}</p>
-                    }
+                    @if (sala.modo !== 'Individual') { <p>{{ sala.privada ? 'Sala privada' : 'Sala pública' }}</p> }
                     <p>{{ sala.jugadores.length }} / {{ sala.maximoJugadores }} jugadores. {{ sala.modo === 'Individual' ? 'Un jugador.' : 'Mínimo dos jugadores.' }}</p>
                     <details>
                         <summary>Configuración de la partida</summary>
@@ -51,11 +53,18 @@
                         <p class="turno">{{ estadoJugador }}</p>
                         @if (tablero; as actual) {
                             <app-tablero [tablero]="actual" [nombreEspecial]="nombreEspecial(actual.piezaEspecial)" />
-                            <p>{{ actual.puntuacion }} puntos · Nivel {{ actual.nivel }} · {{ actual.lineas }} líneas</p>
+                            @if (sala.progresoCompartido; as progreso) {
+                                <p>{{ puntosJugador }} puntos · Nivel: {{ progreso.nivel }}</p>
+                                <p>Filas para el próximo nivel: {{ progreso.progresoSiguienteNivel }}/10 · {{ progreso.filasNormales }} líneas globales</p>
+                            } @else {
+                                <p>{{ actual.puntuacion }} puntos · Nivel {{ actual.nivel }} · {{ actual.lineas }} líneas</p>
+                            }
                         }
                         <app-controles [habilitado]="salas.puedeMover()" (movimiento)="mover($event)" />
                     </section>
                     <aside class="panel-jugadores">
+                        <app-siguiente-pieza [pieza]="salas.vistaPrevia()?.pieza ?? null" [espectador]="espectador"
+                            [nombreEspecial]="nombreEspecial(salas.vistaPrevia()?.pieza?.piezaEspecial ?? null)" />
                         <h2>Jugadores</h2>
                         @for (jugador of sala.jugadores; track jugador.usuarioId) {
                             <p [class.jugador-turno]="sala.usuarioTurno === jugador.usuarioId">

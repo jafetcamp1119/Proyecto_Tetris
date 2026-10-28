@@ -15,18 +15,18 @@ public class UsuariosController : ControllerBase
 {
     private readonly IAccesoUsuarioLJ acceso;
     private readonly IUsuarioLJ usuarios;
-    private readonly ServicioToken tokens;
+    private readonly PublicadorSesion publicadorSesion;
 
-    public UsuariosController(IAccesoUsuarioLJ acceso, IUsuarioLJ usuarios, ServicioToken tokens)
+    public UsuariosController(IAccesoUsuarioLJ acceso, IUsuarioLJ usuarios, PublicadorSesion publicadorSesion)
     {
         this.acceso = acceso;
         this.usuarios = usuarios;
-        this.tokens = tokens;
+        this.publicadorSesion = publicadorSesion;
     }
 
     [HttpPost("registrar")]
     [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
-    public IActionResult Registrar(TRegistroUsuario datos)
+    public async Task<IActionResult> Registrar(TRegistroUsuario datos)
     {
         var respuesta = acceso.Registrar(datos);
         if (respuesta.CodigoError == "NombreOcupado")
@@ -34,10 +34,11 @@ public class UsuariosController : ControllerBase
             return Conflict(respuesta);
         }
 
-        return ResponderSesion(respuesta, StatusCodes.Status201Created);
+        return await ResponderSesion(respuesta, StatusCodes.Status201Created);
     }
 
     [HttpGet("disponibilidad")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
     public IActionResult Disponibilidad([FromQuery] string nombreUsuario)
     {
         var respuesta = acceso.NombreDisponible(nombreUsuario);
@@ -51,19 +52,26 @@ public class UsuariosController : ControllerBase
 
     [HttpPost("recuperar")]
     [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
-    [HttpPost("renovar")]
-    public IActionResult Recuperar(TRecuperarSesion datos)
+    public async Task<IActionResult> Recuperar(TRecuperarSesion datos)
     {
-        return ResponderSesion(acceso.Recuperar(datos), StatusCodes.Status200OK);
+        return await ResponderSesion(acceso.Recuperar(datos), StatusCodes.Status200OK);
+    }
+
+    [HttpPost("renovar")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    public async Task<IActionResult> Renovar(TRecuperarSesion datos)
+    {
+        return await ResponderSesion(acceso.Renovar(datos), StatusCodes.Status200OK);
     }
 
     [Authorize]
     [HttpPost("logout")]
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout([FromServices] ConexionesSesion conexiones)
     {
         var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var sesionId = Guid.Parse(User.FindFirstValue("sid")!);
         acceso.Revocar(sesionId, usuarioId);
+        await conexiones.CerrarSesionAsync(usuarioId, sesionId);
         return NoContent();
     }
 
@@ -82,20 +90,31 @@ public class UsuariosController : ControllerBase
     }
 
     [Authorize, HttpPost("codigo-recuperacion")]
-    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("GenerarCodigo")]
     public IActionResult GenerarCodigo()
     {
         var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        return Ok(acceso.GenerarRecuperacion(usuarioId));
+        var respuesta = acceso.GenerarRecuperacion(usuarioId, Guid.Parse(User.FindFirstValue("sid")!));
+        return respuesta.Success ? Ok(respuesta) : Unauthorized(respuesta);
+    }
+
+    [Authorize, HttpPost("confirmar-codigo-recuperacion")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
+    public IActionResult ConfirmarCodigo(TRecuperarCodigo datos)
+    {
+        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var respuesta = acceso.ConfirmarRecuperacion(usuarioId, Guid.Parse(User.FindFirstValue("sid")!), datos.Credencial);
+        if (respuesta.CodigoError == "CredencialInvalida") { return Unauthorized(respuesta); }
+        return respuesta.Success ? Ok(respuesta) : BadRequest(respuesta);
     }
 
     [HttpPost("recuperar-codigo")]
-    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Acceso")]
-    public IActionResult RecuperarCodigo(TRecuperarSesion datos)
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("Recuperacion")]
+    public async Task<IActionResult> RecuperarCodigo(TRecuperarCodigo datos)
     {
         try
         {
-            return ResponderSesion(acceso.RecuperarConCodigo(datos.Credencial), StatusCodes.Status200OK);
+            return await ResponderSesion(acceso.RecuperarConCodigo(datos.Credencial), StatusCodes.Status200OK);
         }
         catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
         {
@@ -103,11 +122,11 @@ public class UsuariosController : ControllerBase
         }
     }
 
-    private IActionResult ResponderSesion(Respuesta<TSesionJugador> respuesta, int estadoExitoso)
+    private async Task<IActionResult> ResponderSesion(Respuesta<TSesionJugador> respuesta, int estadoExitoso)
     {
         if (!respuesta.Success)
         {
-            if (respuesta.CodigoError == "CredencialInvalida")
+            if (respuesta.CodigoError is "CredencialInvalida" or "SesionInvalida" or "SesionReemplazada")
             {
                 return Unauthorized(respuesta);
             }
@@ -116,9 +135,8 @@ public class UsuariosController : ControllerBase
         }
 
         var sesion = respuesta.Data!;
-        var autenticacion = tokens.Crear(sesion.Usuario, sesion.SesionId);
-        autenticacion.Credencial = sesion.Credencial;
-        autenticacion.CredencialExpiraEnUtc = sesion.CredencialExpiraEnUtc;
+        var autenticacion = await publicadorSesion.CrearAsync(sesion);
+        if (autenticacion == null) { return Conflict(Respuesta<object>.Fail("La cuenta cambio durante el ingreso. Reintenta.", "SesionCambioConcurrente")); }
         return StatusCode(estadoExitoso, Respuesta<TAutenticacion>.Ok(autenticacion));
     }
 }

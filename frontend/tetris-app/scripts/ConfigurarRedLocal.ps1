@@ -21,7 +21,7 @@ $raiz = Split-Path $PSScriptRoot -Parent
 $configuracion = @"
 // Configuración interna de desarrollo. Actualizar con npm run red:local al cambiar de red.
 export const configuracionRed = {
-    urlNavegador: 'http://localhost:5186',
+    urlNavegador: 'http://' + window.location.hostname + ':5186',
     urlAndroid: 'http://${direccion}:5186',
     permitirHttpLocal: true
 };

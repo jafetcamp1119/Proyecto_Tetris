@@ -1,29 +1,48 @@
-import { AfterViewInit, Component, ElementRef, Input, OnChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, ViewChild, inject } from '@angular/core';
 import { ITablero } from '../modelos/tetris.model';
+import { coloresPiezas } from '../modelos/colores-piezas';
+import { RendimientoServicio } from '../servicios/rendimiento.servicio';
 
 @Component({
     selector: 'app-tablero',
     standalone: true,
     template: `
+        <div class="lienzo-contenedor">
         <canvas #lienzo class="tablero-tetris" [class.destello-lineas]="tablero.evento?.lineasEliminadas" role="img"
             [attr.aria-label]="'Tablero de Tetris. Puntuación: ' + tablero.puntuacion + '. Nivel: ' + tablero.nivel"></canvas>
+        </div>
         @if (tablero.piezaEspecial) {
             <p class="especial-activa">{{ nombreEspecial }}</p>
         }
     `
 })
-export class TableroComponent implements AfterViewInit, OnChanges {
+export class TableroComponent implements AfterViewInit, OnChanges, OnDestroy {
     @Input({ required: true }) tablero!: ITablero;
     @Input() nombreEspecial = 'Pieza especial';
     @ViewChild('lienzo') lienzo?: ElementRef<HTMLCanvasElement>;
-    private readonly colores = ['#111a2c', '#26d9e8', '#f5d547', '#ab79fb', '#47d68c', '#fa637b', '#618aff', '#ffa44f'];
+    private readonly colores = coloresPiezas;
+    private readonly rendimiento = inject(RendimientoServicio);
+    private cuadro?: number;
+    private ultimaRepresentacion = '';
 
     ngAfterViewInit(): void {
-        this.dibujar();
+        this.programarDibujo();
     }
 
     ngOnChanges(): void {
-        this.dibujar();
+        this.programarDibujo();
+    }
+
+    ngOnDestroy(): void {
+        if (this.cuadro !== undefined) { cancelAnimationFrame(this.cuadro); }
+    }
+
+    private programarDibujo(): void {
+        if (this.cuadro !== undefined || !this.lienzo) { return; }
+        this.cuadro = requestAnimationFrame(() => {
+            this.cuadro = undefined;
+            this.dibujar();
+        });
     }
 
     private dibujar(): void {
@@ -32,9 +51,15 @@ export class TableroComponent implements AfterViewInit, OnChanges {
         if (!lienzo || !contexto || !this.tablero) {
             return;
         }
+        const representacion = JSON.stringify([this.tablero.celdas, this.tablero.pieza, this.tablero.tipoPieza, this.tablero.perdido, this.tablero.piezaEspecial]);
+        if (representacion === this.ultimaRepresentacion) { return; }
+        this.ultimaRepresentacion = representacion;
+        const inicio = this.rendimiento.iniciar();
         const medida = 30;
-        lienzo.width = (this.tablero.celdas[0]?.length || 10) * medida;
-        lienzo.height = this.tablero.celdas.length * medida;
+        const ancho = (this.tablero.celdas[0]?.length || 10) * medida;
+        const alto = this.tablero.celdas.length * medida;
+        if (lienzo.width !== ancho) { lienzo.width = ancho; }
+        if (lienzo.height !== alto) { lienzo.height = alto; }
         const celda = (fila: number, columna: number, tipo: number, activa = false): void => {
             if (fila < 0) {
                 return;
@@ -55,5 +80,7 @@ export class TableroComponent implements AfterViewInit, OnChanges {
         if (!this.tablero.perdido) {
             this.tablero.pieza.forEach(pieza => celda(pieza.fila, pieza.columna, this.tablero.tipoPieza + 1, true));
         }
+        this.rendimiento.finalizar('tablero_dibujo_ms', inicio);
+        this.rendimiento.marcarDibujo();
     }
 }

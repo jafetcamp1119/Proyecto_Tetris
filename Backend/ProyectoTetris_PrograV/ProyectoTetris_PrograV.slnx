@@ -6,5 +6,6 @@
   <Project Path="Utilitarios/Utilitarios.csproj" />
   <Project Path="Tetris.Cliente/Tetris.Cliente.csproj" />
   <Project Path="Tetris.Pruebas/Tetris.Pruebas.csproj" />
+  <Project Path="Tetris.Presentacion/Tetris.Presentacion.csproj" />
 </Solution>
 

@@ -1,6 +1,3 @@
-import { configuracion } from './configuracion';
-
-export const environment = {
-  production: true,
-  ...configuracion
-};
+import { google } from './configuracion-google';
+import { redPublicada } from './configuracion-publicada';
+export const environment = { production: true, google, red: redPublicada };

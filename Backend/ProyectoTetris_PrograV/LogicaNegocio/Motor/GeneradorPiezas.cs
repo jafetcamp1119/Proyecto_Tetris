@@ -17,6 +17,11 @@ public class GeneradorPiezas
         this.azar = azar;
     }
 
+    public PiezaPreparada PrepararPieza(ConfiguracionPiezas configuracion)
+    {
+        return new PiezaPreparada(SortearForma(configuracion.FormasPermitidas), SortearEspecial(configuracion));
+    }
+
     public int SortearForma(int cantidadFormas)
     {
         return azar.Next(cantidadFormas);

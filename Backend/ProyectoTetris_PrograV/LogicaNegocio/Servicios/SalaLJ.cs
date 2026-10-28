@@ -3,6 +3,7 @@ using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
 using Utilitarios;
+using LogicaJuego.Motor;
 
 namespace LogicaJuego.Servicios;
 
@@ -25,12 +26,13 @@ public class SalaLJ : ISalaLJ
     }
 
     private readonly IMotorJuego motor;
+    private readonly GeneradorPiezas generador;
     private readonly OpcionesPausa opcionesPausa;
     private readonly ICatalogoPiezasEspeciales? catalogoPiezas;
     private readonly ProyectorSala proyector;
     private readonly ControlPausas pausas;
     private readonly ControlEfectos efectos;
-    private readonly CodigosSala codigosPrivados = new();
+    private readonly CodigosSala codigosSala = new();
     private readonly ConcurrentDictionary<Guid, SalaMemoria> _salas = new();
 
     public SalaLJ(IMotorJuego motor) : this(motor, new OpcionesPausa(), null)
@@ -38,10 +40,11 @@ public class SalaLJ : ISalaLJ
     }
 
     public SalaLJ(IMotorJuego motor, OpcionesPausa opcionesPausa, ICatalogoPiezasEspeciales? catalogoPiezas,
-        TimeProvider? reloj = null, OpcionesEfectos? opcionesEfectos = null)
+        TimeProvider? reloj = null, OpcionesEfectos? opcionesEfectos = null, GeneradorPiezas? generador = null)
     {
         this.reloj = reloj ?? TimeProvider.System;
         this.motor = motor;
+        this.generador = generador ?? new GeneradorPiezas();
         this.opcionesPausa = opcionesPausa;
         this.catalogoPiezas = catalogoPiezas;
         this.proyector = new ProyectorSala(motor);
@@ -89,22 +92,45 @@ public class SalaLJ : ISalaLJ
         sala.MinimoVictoriasCorona = datos.MinimoVictoriasCorona;
         sala.Jugadores.Add(new JugadorSala(usuarioId, nombre));
 
-        // Una partida individual nunca recibe invitados, por lo que no tiene sentido hacerla privada.
-        if (datos.Privada && !esIndividual)
+        sala.Privada = datos.Privada && !esIndividual;
+        if (!esIndividual)
         {
-            var codigo = codigosPrivados.Reservar(sala.Id);
-
+            var codigo = codigosSala.Reservar(sala.Id);
             if (codigo == null)
             {
                 return Respuesta<TSala>.Fail("No se pudo generar el código de la sala. Intente de nuevo.");
             }
-
-            sala.Privada = true;
-            sala.CodigoPrivado = codigo;
+            sala.CodigoIngreso = codigo;
         }
 
         _salas[sala.Id] = sala;
         return Respuesta<TSala>.Ok(proyector.Sala(sala));
+    }
+
+    public Respuesta<TVistaPreviaPrivada> ObtenerSiguientePieza(Guid salaId, int usuarioId)
+    {
+        if (!_salas.TryGetValue(salaId, out var sala))
+        {
+            return Respuesta<TVistaPreviaPrivada>.Fail("Sala no encontrada.");
+        }
+        lock (sala.Cerrojo)
+        {
+            var jugador = sala.BuscarJugador(usuarioId);
+            if (jugador == null || jugador.Abandono)
+            {
+                return Respuesta<TVistaPreviaPrivada>.Fail("No pertenecés a esta sala.");
+            }
+            PiezaPreparada? preparada = null;
+            if (sala.Estado == EstadoSala.EnCurso && !jugador.Perdido)
+            {
+                preparada = sala.Modo == ModoJuego.Compartido ? jugador.SiguientePieza : jugador.Tablero?.SiguientePieza;
+            }
+            var pieza = preparada == null ? null : new TPiezaSiguiente(
+                preparada.TipoPieza,
+                FormasPieza.Bloques(preparada.TipoPieza).Select(bloque => new TCelda(bloque.F, bloque.C)).ToArray(),
+                preparada.Especial?.Codigo);
+            return Respuesta<TVistaPreviaPrivada>.Ok(new TVistaPreviaPrivada(sala.Id, jugador.Id, sala.NumeroRonda, sala.Version, pieza));
+        }
     }
 
     // Solo el creador puede cambiar las piezas especiales, y únicamente antes de iniciar.
@@ -391,14 +417,15 @@ public class SalaLJ : ISalaLJ
         }
     }
 
-    // Acepta el código privado de 6 caracteres o el código público de 12 de una sala pública.
+    // El código de ingreso es de seis caracteres para cualquier privacidad.
+    // Se conserva la lectura de identificadores públicos antiguos para clientes anteriores.
     public Respuesta<TSala> UnirsePorCodigo(string codigo, int usuarioId, string nombre)
     {
         var texto = codigo.Trim();
 
         if (texto.Length == CodigosSala.Longitud)
         {
-            return UnirsePorCodigoPrivado(texto, usuarioId, nombre);
+            return UnirsePorCodigoIngreso(texto, usuarioId, nombre);
         }
 
         if (texto.Length == 12)
@@ -409,9 +436,9 @@ public class SalaLJ : ISalaLJ
         return Respuesta<TSala>.Fail("Código inválido.");
     }
 
-    private Respuesta<TSala> UnirsePorCodigoPrivado(string codigo, int usuarioId, string nombre)
+    private Respuesta<TSala> UnirsePorCodigoIngreso(string codigo, int usuarioId, string nombre)
     {
-        var encontrada = codigosPrivados.TryObtenerSala(codigo, out var salaId);
+        var encontrada = codigosSala.TryObtenerSala(codigo, out var salaId);
 
         if (!encontrada || !_salas.TryGetValue(salaId, out var sala))
         {
@@ -430,7 +457,7 @@ public class SalaLJ : ISalaLJ
             codigo,
             StringComparison.OrdinalIgnoreCase));
 
-        if (sala == null)
+        if (sala == null || sala.Modo == ModoJuego.Individual)
         {
             return Respuesta<TSala>.Fail("Sala no encontrada.");
         }
@@ -561,6 +588,7 @@ public class SalaLJ : ISalaLJ
                 jugador.Nivel = 1;
                 jugador.Secuencia = 0;
                 jugador.Tablero = null;
+                jugador.SiguientePieza = null;
                 jugador.Efectos.Clear();
                 jugador.Desconexion = null;
                 if (jugador.Conexiones.Count == 0)
@@ -653,6 +681,13 @@ public class SalaLJ : ISalaLJ
         {
             sala.Compartido = motor.CrearTablero(sala.Piezas);
             sala.Compartido.EsCompartido = true;
+            foreach (var jugador in sala.Jugadores)
+            {
+                jugador.SiguientePieza = jugador == sala.Jugadores[0]
+                    ? sala.Compartido.SiguientePieza ?? generador.PrepararPieza(sala.Piezas)
+                    : generador.PrepararPieza(sala.Piezas);
+            }
+            sala.Compartido.SiguientePieza = null;
             return;
         }
 
@@ -707,11 +742,22 @@ public class SalaLJ : ISalaLJ
         var puntos = tablero.Puntuacion;
         var lineas = tablero.Lineas;
         var secuenciaEvento = tablero.EventoSecuencia;
+        if (sala.Compartido != null)
+        {
+            // El motor comprueba la aparición con la pieza anunciada al próximo jugador.
+            var proximo = ProximoTurno(sala);
+            tablero.SiguientePieza = sala.Jugadores[proximo].SiguientePieza;
+        }
         var paso = accion();
 
         jugador.Puntos += tablero.Puntuacion - puntos;
         jugador.Lineas += tablero.Lineas - lineas;
         jugador.Nivel = Math.Max(jugador.Nivel, tablero.Nivel);
+        if (sala.Compartido != null)
+        {
+            // Las líneas normales ya se acumulan en el único tablero de la sala.
+            foreach (var participante in sala.Jugadores) { participante.Nivel = tablero.Nivel; }
+        }
 
         if (paso.Cambio)
         {
@@ -744,13 +790,15 @@ public class SalaLJ : ISalaLJ
     }
 
     // La limpieza de emergencia no cambia los puntos ni las líneas.
-    private static void EliminarJugador(SalaMemoria sala, JugadorSala jugador)
+    private void EliminarJugador(SalaMemoria sala, JugadorSala jugador)
     {
         jugador.Perdido = true;
+        jugador.SiguientePieza = null;
 
         if (jugador.Tablero != null)
         {
             jugador.Tablero.Perdido = true;
+            jugador.Tablero.SiguientePieza = null;
         }
 
         if (sala.Compartido != null && sala.Jugadores[sala.Turno] == jugador)
@@ -760,7 +808,7 @@ public class SalaLJ : ISalaLJ
                 Array.Clear(sala.Compartido.Celdas[fila]);
             }
 
-            // Se conserva la siguiente pieza que el motor ya sorteó.
+            // Se libera la zona de aparición como antes y entra la pieza del próximo turno.
             sala.Compartido.Perdido = false;
             sala.Compartido.Fila = 0;
             sala.Compartido.Columna = 3;
@@ -772,17 +820,37 @@ public class SalaLJ : ISalaLJ
         sala.Version++;
     }
 
-    private static void SiguienteTurno(SalaMemoria sala)
+    private static int ProximoTurno(SalaMemoria sala)
     {
+        var turno = sala.Turno;
         for (var i = 0; i < sala.Jugadores.Count; i++)
         {
-            sala.Turno = (sala.Turno + 1) % sala.Jugadores.Count;
-
-            if (!sala.Jugadores[sala.Turno].Perdido)
+            turno = (turno + 1) % sala.Jugadores.Count;
+            if (!sala.Jugadores[turno].Perdido)
             {
-                return;
+                return turno;
             }
         }
+        return sala.Turno;
+    }
+
+    private void SiguienteTurno(SalaMemoria sala)
+    {
+        sala.Turno = ProximoTurno(sala);
+        var jugador = sala.Jugadores[sala.Turno];
+        if (jugador.Perdido || sala.Compartido == null || jugador.SiguientePieza == null)
+        {
+            return;
+        }
+        var preparada = jugador.SiguientePieza;
+        sala.Compartido.TipoPieza = preparada.TipoPieza;
+        sala.Compartido.PiezaSecuencia++;
+        sala.Compartido.PiezaEspecial = preparada.Especial;
+        sala.Compartido.Fila = 0;
+        sala.Compartido.Columna = 3;
+        sala.Compartido.Rotacion = 0;
+        sala.Compartido.SiguientePieza = null;
+        jugador.SiguientePieza = generador.PrepararPieza(sala.Piezas);
     }
 
     private void FinalizarSiCorresponde(SalaMemoria sala, DateTime ahora)
@@ -897,7 +965,7 @@ public class SalaLJ : ISalaLJ
             jugador.Abandono = true;
         }
 
-        codigosPrivados.Liberar(sala.CodigoPrivado, sala.Id);
+        codigosSala.Liberar(sala.CodigoIngreso, sala.Id);
     }
 
     // ---------- Pausa ----------
@@ -936,6 +1004,20 @@ public class SalaLJ : ISalaLJ
         }
 
         return pendientes.ToArray();
+    }
+
+    public Guid? BuscarActiva(int usuarioId)
+    {
+        foreach (var sala in _salas.Values.OrderByDescending(sala => sala.Creada))
+        {
+            lock (sala.Cerrojo)
+            {
+                if (sala.Estado is not (EstadoSala.EnCurso or EstadoSala.Esperando)) { continue; }
+                var jugador = sala.Jugadores.Find(jugador => jugador.Id == usuarioId);
+                if (jugador != null && !jugador.Abandono) { return sala.Id; }
+            }
+        }
+        return null;
     }
 
     // ---------- Conexiones ----------
@@ -1073,7 +1155,7 @@ public class SalaLJ : ISalaLJ
     private void RetirarSala(SalaMemoria sala)
     {
         _salas.TryRemove(sala.Id, out _);
-        codigosPrivados.Liberar(sala.CodigoPrivado, sala.Id);
+        codigosSala.Liberar(sala.CodigoIngreso, sala.Id);
     }
 
     private static bool PuedeRetirarse(SalaMemoria sala, DateTime ahora)
@@ -1169,8 +1251,7 @@ public class SalaLJ : ISalaLJ
 
     private static TimeSpan Intervalo(TableroJuego tablero, int factor = 1)
     {
-        var milisegundos = tablero.Piezas.IntervaloBaseMs - (tablero.Nivel - 1) * 60;
-        return TimeSpan.FromMilliseconds(Math.Max(1, Math.Max(100, milisegundos) / factor));
+        return TimeSpan.FromMilliseconds(Math.Max(1, tablero.IntervaloCaidaMs / factor));
     }
 
     // ---------- Persistencia ----------

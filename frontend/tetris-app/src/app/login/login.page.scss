@@ -352,6 +352,12 @@ button {
   }
 }
 
+.aviso-sesion {
+  padding: 14px;
+  border: 1px solid #ffcf72;
+  border-radius: 12px;
+}
+
 /* Pantallas pequeñas */
 @media (max-width: 800px) {
   .login {

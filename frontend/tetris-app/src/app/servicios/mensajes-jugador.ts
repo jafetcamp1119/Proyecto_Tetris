@@ -11,7 +11,8 @@ export function mensajeParaJugador(error: unknown, alternativa = 'No pudimos com
             SesionInvalida: 'No pudimos recuperar tu sesión. Intentá ingresar nuevamente.',
             GoogleEnOtroPerfil: 'Esa cuenta Google pertenece a otro jugador. Usá Cambiar de jugador para abrir ese perfil. Tu progreso se conserva.',
             GoogleYaVinculado: 'Este jugador ya tiene otra cuenta Google vinculada.',
-            GoogleSinVincular: 'Primero creá o recuperá tu jugador y vinculá Google desde Mi perfil.',
+            GoogleSinVincular: 'Continuá con Google para registrar tu nombre de jugador.',
+            RegistroGoogleVencido: 'La verificación de Google venció o ya se utilizó. Continuá nuevamente con Google.',
             GoogleInvalido: 'No pudimos verificar tu cuenta Google. Intentá de nuevo.'
         };
         if (error.codigo && mensajes[error.codigo]) {

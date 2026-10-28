@@ -2,7 +2,7 @@
 
 ## Configuración pública ya aplicada
 
-El Client ID web proporcionado está en `src/environments/configuracion.ts`, propiedad `configuracion.google.idClienteWeb`:
+El Client ID web proporcionado está en `src/environments/configuracion-google.ts`, propiedad `google.idClienteWeb`:
 
 `652877629973-kt2nkjl56mvgv6udli3m92mf64jcfcrs.apps.googleusercontent.com`
 
@@ -24,13 +24,13 @@ El ID del cliente OAuth Android se registra en Google Cloud junto al paquete y a
 4. C# verifica el ID token con Google.Apis.Auth: firma, emisor, audiencia, vencimiento y coincidencia del nonce de un solo uso.
 5. La identidad se asocia por sub al mismo UsuarioId. No se cambian el nickname ni las relaciones de partidas y estadísticas. El correo no se utiliza para fusionar cuentas.
 6. Si Google ya pertenece a otro jugador, se muestra un conflicto. No se fusiona ni se reemplaza ningún perfil. Se debe elegir Cambiar de jugador e ingresar con Google para abrir el otro perfil.
-7. En otro teléfono, Continuar con Google recupera el jugador vinculado y crea una credencial de dispositivo nueva. Google sin vinculación previa muestra una indicación para crear o recuperar primero el invitado; no inventa un nickname ni crea duplicados automáticamente.
+7. Continuar con Google ingresa directamente si ya existe un vínculo. Una identidad desconocida obtiene un comprobante opaco, de cinco minutos y un solo uso, para elegir nickname y crear cuenta/vínculo/credencial juntos. No exige crear un invitado previo. Los nicknames ocupados pueden corregirse sin repetir OAuth mientras el comprobante siga vigente. Índices únicos SQL y exclusión de identidades impiden duplicados; nunca se fusiona por correo o nickname. El comprobante vive solo en memoria, no concede JWT de juego y se descarta al salir del flujo.
 8. Google no sustituye los JWT de Tetris. Las llamadas al juego siguen usando los tokens propios y la validación de sesión existente.
 9. Android guarda las credenciales duraderas de Tetris mediante AES/GCM y Android Keystore, con @aparajita/capacitor-secure-storage 8.0.1. El JWT vive en memoria. Después de obtener el ID token se limpia el estado local del plugin de Google antes de completar la operación con C#. No se guardan tokens Google desde el código Angular.
 
 ## Estado de las pruebas
 
-- En la integración anterior compilaron Angular, C# y Android debug con los plugins nativos. La revisión posterior de audio y red compila Angular y C#, pero no compila Android ni genera APK. Los cambios nativos de red de esta revisión quedan pendientes de la compilación y prueba manual de la desarrolladora.
+- La revisión vigente compila Angular, C# y clases/manifest Android sin generar APK. Los resultados y límites actuales están en el [README principal](../../README.md); compilar no acredita un acceso real con Google.
 - Probados conflictos de vinculación, conservación de UsuarioId y récord, recuperación y consumo único de códigos privados.
 - Pruebas SQL ejecutadas en TetrisValidacion_Google_20261023, separada de TetrisDB. Sus identidades externas están simuladas y se identifican como pruebas: no acreditan un acceso real a Google.
 - Probado que un ID token inventado se rechaza mediante la biblioteca oficial y también por HTTP, y que no se puede vincular sin JWT de Tetris.
@@ -43,7 +43,7 @@ En el cliente web Tetris Angular, registrar los orígenes exactos de desarrollo 
 
 En el cliente Android Tetris Android - Desarrollo, comprobar paquete y SHA-1 anteriores. Si otra persona compila con otro certificado debug, necesita su propio cliente Android con esa huella.
 
-Si la pantalla de consentimiento requiere usuarios de prueba, agregar las cuentas que realizarán la verificación. Probar con conexión a Internet y un Android con Google Play Services actualizado. Para producción registrar el certificado que firme la app distribuida, incluida la firma de Play si se usa Play App Signing.
+Durante Testing se pueden usar cuentas de prueba. Para la versión final, configurar audiencia External y publicar OAuth en Google Auth Platform > Audience, completando Branding y la revisión que Google solicite; ver `PUBLICACION_MOVIL.md`. Probar con conexión a Internet y un Android con Google Play Services actualizado. Para producción registrar el certificado que firme la app distribuida, incluida la firma de Play si se usa Play App Signing.
 
 No se necesita google-services.json ni Firebase para el flujo implementado. No copiar el secreto del cliente web a Ionic, Android, documentación ni GitHub.
 

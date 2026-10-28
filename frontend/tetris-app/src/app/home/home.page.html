@@ -14,6 +14,7 @@
     </div>
 
     <section class="panel" aria-labelledby="titulo">
+      <app-codigo-recuperacion />
       <div class="barra-perfil">
         <button class="accion secundaria" (click)="abrirAjustes()">♪ Ajustes de sonido</button>
         <button class="accion secundaria" (click)="abrirPerfil()">👤 {{ acceso.sesion()?.nombreUsuario }}</button>
@@ -83,6 +84,8 @@
         Tres formas de jugar
         <span class="separador">·</span>
         Cada pieza cuenta
+        <span class="separador">·</span>
+        <a href="privacidad/index.html">Política de privacidad</a>
       </footer>
     </section>
   </main>

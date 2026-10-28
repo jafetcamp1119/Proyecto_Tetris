@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tetris · Presentación</title>
+  <link rel="stylesheet" href="panel.css">
+  <link rel="icon" href="logo.png">
+  <script src="panel.js" defer></script>
+</head>
+<body>
+  <div class="piezas" aria-hidden="true"><i class="pieza t"><b></b><b></b><b></b><b></b></i><i class="pieza l"><b></b><b></b><b></b><b></b></i><i class="pieza s"><b></b><b></b><b></b><b></b></i><i class="pieza t"><b></b><b></b><b></b><b></b></i><i class="pieza o"><b></b><b></b><b></b><b></b></i><i class="pieza l"><b></b><b></b><b></b><b></b></i></div>
+  <header><span class="edicion">PROYECTO UNIVERSITARIO</span><button id="pantalla" type="button">PANTALLA COMPLETA ⤢</button></header>
+  <main>
+    <section class="invitacion">
+      <p class="numero">01 / PREPARÁ TU PRÓXIMA JUGADA</p>
+      <img class="logo" src="logo.png" alt="TETRIS">
+      <h1 class="sr-only">TETRIS</h1>
+      <p class="subtitulo">MULTIPLAYER EDITION</p>
+      <h2>¡LA PARTIDA ESTÁ<br>POR COMENZAR!</h2>
+      <p class="detalle">Un mismo juego. Tres formas de desafiarte.<br>Individual · Compartido · Competitivo</p>
+      <p id="estado" class="estado preparando" role="status" aria-live="polite"><span></span><strong id="estado-texto">PREPARANDO CONEXIÓN</strong></p>
+      <p id="mensaje">Comprobando el sistema antes de invitar a los jugadores.</p>
+    </section>
+    <section class="acceso" aria-labelledby="escanear">
+      <span class="etiqueta">TU PRÓXIMA PARTIDA EMPIEZA ACÁ</span>
+      <div class="marco-qr">
+        <img id="qr" src="qr-tetris.svg" alt="QR para abrir Proyecto Tetris" hidden>
+        <p id="espera">Preparando<br>el acceso al juego…</p>
+      </div>
+      <h2 id="escanear">ESCANEÁ EL CÓDIGO PARA JUGAR</h2>
+      <p class="direccion">https://proyecto-tetris-512517.web.app</p>
+      <a id="abrir" href="https://proyecto-tetris-512517.web.app" target="_blank" rel="noopener" aria-disabled="true">ABRIR TETRIS <span>↗</span></a>
+      <p class="nota">Ingresá con un nickname.<br>Google es opcional para vincular y recuperar tu jugador.</p>
+    </section>
+  </main>
+  <footer><span>GIRÁ. ENCAJÁ. SUPERATE.</span><span>CADA PIEZA CUENTA.</span></footer>
+</body>
+</html>

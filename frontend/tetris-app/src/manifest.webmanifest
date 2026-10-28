@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "Tetris",
+  "short_name": "Tetris",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090d1b",
+  "theme_color": "#090d1b",
+  "icons": [
+    {
+      "src": "assets/icon/tetris-logo-v2-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon/tetris-logo-v2-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon/tetris-maskable-v2-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "orientation": "portrait"
+}

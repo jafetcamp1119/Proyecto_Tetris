@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Utilitarios;
 using Dominio.InterfazLJ;
+using LogicaJuego.Implementacions;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
@@ -17,11 +18,20 @@ public static class ConfiguracionSeguridad
     public const string Esquema = "Tetris";
 
     // Los orígenes son los de la app Ionic. Con Cors:PermitirRedLocal también se aceptan páginas
-    // servidas desde una IPv4 privada (por ejemplo ionic serve abierto en el navegador de un celular).
-    private static void AgregarCors(IServiceCollection servicios, IConfiguration configuracion)
+    // servidas desde una IPv4 privada (por ejemplo ionic serve abierto en el navegador de un celular)
+    private static void AgregarCors(IServiceCollection servicios, IConfiguration configuracion, IHostEnvironment entorno)
     {
         var origenes = configuracion.GetSection("Cors:OrigenesPermitidos").Get<string[]>() ?? [];
-        var permitirRedLocal = configuracion.GetValue<bool>("Cors:PermitirRedLocal");
+        var permitirRedLocal = entorno.IsDevelopment() && configuracion.GetValue<bool>("Cors:PermitirRedLocal");
+        if (!entorno.IsDevelopment() && (configuracion.GetValue<bool>("Cors:PermitirRedLocal") ||
+            origenes.Length == 0 || origenes.Any(origen => !Uri.TryCreate(origen, UriKind.Absolute, out var uri) ||
+                uri.Scheme != "https" || !string.IsNullOrEmpty(uri.UserInfo) ||
+                uri.GetLeftPart(UriPartial.Authority) != origen ||
+                (uri.IsLoopback && origen != "https://localhost") ||
+                (IPAddress.TryParse(uri.Host, out _) && origen != "https://localhost"))))
+        {
+            throw new InvalidOperationException("Producción requiere orígenes CORS HTTPS explícitos. https://localhost corresponde a Capacitor Android.");
+        }
 
         servicios.AddCors(cors =>
         {
@@ -63,7 +73,7 @@ public static class ConfiguracionSeguridad
         var esClaseB = partes[0] == 172 && partes[1] >= 16 && partes[1] <= 31;
         var esClaseC = partes[0] == 192 && partes[1] == 168;
 
-        return esClaseA || esClaseB || esClaseC;
+        return (direccion.Scheme == "http" || direccion.Scheme == "https") && (esClaseA || esClaseB || esClaseC);
     }
 
     public static IServiceCollection AgregarSeguridad(
@@ -75,8 +85,10 @@ public static class ConfiguracionSeguridad
 
         servicios.Configure<OpcionesGoogle>(configuracion.GetSection(OpcionesGoogle.Seccion));
         servicios.AddSingleton(opciones);
+        var claveRecuperacion = configuracion["Recuperacion:Clave"];
+        servicios.AddSingleton(new ProtectorCodigosRecuperacion(string.IsNullOrWhiteSpace(claveRecuperacion) ? opciones.Clave : claveRecuperacion));
         servicios.AddSingleton<ServicioToken>();
-        AgregarCors(servicios, configuracion);
+        AgregarCors(servicios, configuracion, entorno);
 
         servicios
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -164,8 +176,10 @@ public static class ConfiguracionSeguridad
 
         var sesion = contexto.Principal?.FindFirstValue("sid");
         var acceso = contexto.HttpContext.RequestServices.GetRequiredService<IAccesoUsuarioLJ>();
-        if (!Guid.TryParse(sesion, out var sesionId) || !acceso.SesionVigente(sesionId, usuarioId))
+        var errorSesion = Guid.TryParse(sesion, out var sesionId) ? acceso.ErrorSesion(sesionId, usuarioId) : "SesionInvalida";
+        if (errorSesion != null)
         {
+            contexto.HttpContext.Items["ErrorSesionTetris"] = errorSesion;
             contexto.Fail("La sesión del dispositivo ya no está vigente.");
             return Task.CompletedTask;
         }
@@ -183,7 +197,7 @@ public static class ConfiguracionSeguridad
         var vencida = contexto.AuthenticateFailure is SecurityTokenExpiredException;
         var mensaje = vencida ? "El token de acceso venció. Renová la sesión con la credencial del dispositivo."
             : "La sesión no es válida. Intentá recuperarla con la credencial del dispositivo.";
-        var codigo = vencida ? "SesionVencida" : "SesionInvalida";
+        var codigo = vencida ? "SesionVencida" : contexto.HttpContext.Items["ErrorSesionTetris"] as string ?? "SesionInvalida";
         await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail(mensaje, codigo));
     }
 

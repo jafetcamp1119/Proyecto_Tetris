@@ -27,7 +27,7 @@ internal static class VerificacionAccesoReal
         var configuracion = new MapperConfiguration(opcionesMapa => opcionesMapa.AddProfile<AutoMapperProfile>(), registroMensajes);
         var mapper = configuracion.CreateMapper();
         using var unidad = new UnidadTrabajoEF(contexto);
-        var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+        var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
         var nombre = "Verificacion_" + Guid.NewGuid().ToString("N");
         var cantidadUsuarios = await contexto.Usuarios.CountAsync();
         await using var transaccion = await contexto.Database.BeginTransactionAsync();

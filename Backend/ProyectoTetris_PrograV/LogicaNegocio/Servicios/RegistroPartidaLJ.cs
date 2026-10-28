@@ -108,12 +108,14 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
 
     private static string CodigoDeRonda(TSala sala)
     {
+        // Identidad histórica independiente del código corto, que puede reutilizarse al cerrar una sala.
+        var identificador = sala.Id.ToString("N")[..12];
         if (sala.NumeroRonda == 1)
         {
-            return sala.Codigo;
+            return identificador;
         }
 
-        return sala.Codigo + "-" + sala.NumeroRonda;
+        return identificador + "-" + sala.NumeroRonda;
     }
 
     private Partida CrearPartida(TSala sala)

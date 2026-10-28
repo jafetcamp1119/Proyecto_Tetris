@@ -1,5 +1,4 @@
-// Referencia para copiar a src/app/models de tu futuro proyecto Ionic.
-// No es un proyecto frontend ni incluye pantallas.
+// Referencia de contratos. La implementación Ionic vigente está en frontend/tetris-app/src/app/modelos.
 
 export interface IRespuesta<T> {
   success: boolean;
@@ -26,8 +25,11 @@ export interface IRecuperarSesion {
 export interface IAutenticacion extends IUsuario {
   token: string;
   tipoToken: 'Bearer';
-  // Solo llega al registrarse; guardar inmediatamente en almacenamiento seguro nativo.
+  // Puede rotarse al ingresar; guardar el valor recibido en almacenamiento seguro nativo.
   credencial?: string;
+  salaActivaId?: string | null;
+  codigoRecuperacionNuevo?: string | null;
+  codigoRecuperacionPorConfirmar?: boolean;
   credencialExpiraEnUtc: string;
   expiraEnUtc: string;
 }
@@ -144,7 +146,26 @@ export interface ICelda {
   columna: number;
 }
 
+export interface IPiezaSiguiente {
+  tipoPieza: number;
+  celdas: ICelda[];
+  piezaEspecial: string | null;
+}
+
+// Evento privado VistaPreviaActualizada; nunca forma parte de ISala o ITablero.
+export interface IVistaPreviaPrivada {
+  salaId: string;
+  usuarioId: number;
+  numeroRonda: number;
+  version: number;
+  pieza: IPiezaSiguiente | null;
+}
+
 export interface ITablero {
+  fila?: number;
+  columna?: number;
+  rotacion?: number;
+  piezaSecuencia?: number;
   usuarioId: number | null;
   celdas: number[][];
   tipoPieza: number;
@@ -220,6 +241,7 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
+  progresoCompartido?: { filasNormales: number; nivel: number; progresoSiguienteNivel: number; intervaloCaidaMs: number } | null;
   numeroRonda: number;
   // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
   efectos: IEfectoTemporal[];

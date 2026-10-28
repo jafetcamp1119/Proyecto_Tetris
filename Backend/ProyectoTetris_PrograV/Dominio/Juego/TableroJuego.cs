@@ -8,6 +8,7 @@ public sealed class TableroJuego
     public int Rotacion { get; internal set; }
     public int Fila { get; internal set; }
     public int Columna { get; internal set; }
+    public long PiezaSecuencia { get; internal set; }
     public int Puntuacion { get; internal set; }
     public int Lineas { get; internal set; }
 
@@ -20,6 +21,10 @@ public sealed class TableroJuego
     }
 
     public bool Perdido { get; internal set; }
+    public int IntervaloCaidaMs
+    {
+        get { return Math.Max(100, Piezas.IntervaloBaseMs - (Nivel - 1) * 60); }
+    }
 
     public bool EsCompartido { get; internal set; }
 
@@ -28,6 +33,7 @@ public sealed class TableroJuego
     public ConfiguracionPiezas Piezas { get; internal set; } = ConfiguracionPiezas.SoloNormales;
 
     public TipoPiezaEspecial? PiezaEspecial { get; internal set; }
+    public PiezaPreparada? SiguientePieza { get; internal set; }
 
     // Qué ocurrió en la última acción del motor. El cliente lo usa para reproducir sonidos;
     // la secuencia sube con cada acción para que un mismo evento no se reproduzca dos veces.

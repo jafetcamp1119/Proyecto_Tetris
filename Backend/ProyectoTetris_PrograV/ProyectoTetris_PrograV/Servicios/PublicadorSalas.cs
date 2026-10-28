@@ -10,6 +10,12 @@ namespace ProyectoTetris_PrograV.Servicios;
 public class PublicadorSalas
 {
     public const string EventoEstado = "EstadoActualizado";
+    public const string EventoVistaPrevia = "VistaPreviaActualizada";
+
+    public static string GrupoPrivado(Guid salaId, int usuarioId)
+    {
+        return $"{salaId}:jugador:{usuarioId}";
+    }
 
     private readonly ISalaLJ salas;
     private readonly IHubContext<JuegoHub> hub;
@@ -24,6 +30,16 @@ public class PublicadorSalas
     public async Task PublicarEstadoAsync(TSala estado, CancellationToken cancelacion = default)
     {
         await hub.Clients.Group(estado.Id.ToString()).SendAsync(EventoEstado, estado, cancelacion);
+        // Nunca se incorporan próximas piezas al DTO compartido ni al grupo público.
+        foreach (var jugador in estado.Jugadores)
+        {
+            var vista = salas.ObtenerSiguientePieza(estado.Id, jugador.UsuarioId);
+            if (vista.Success)
+            {
+                await hub.Clients.Group(GrupoPrivado(estado.Id, jugador.UsuarioId))
+                    .SendAsync(EventoVistaPrevia, vista.Data!, cancelacion);
+            }
+        }
         await PublicarEventosAsync(cancelacion);
     }
 

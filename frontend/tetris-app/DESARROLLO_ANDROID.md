@@ -2,6 +2,8 @@
 
 La dirección está centralizada en src/environments/configuracion-red.ts. Los jugadores no ven ni escriben direcciones. Se conservan el paquete com.proyectotetris.juegocr y el proyecto Android existente.
 
+Esta guía corresponde a compilaciones Development en LAN. Producción consulta la configuración remota fija de Firebase y no requiere una APK nueva por cada túnel; ver el [README principal](../../README.md). Las IP indicadas abajo son ejemplos históricos: ejecutar `npm run red:local` para obtener la dirección vigente.
+
 ## Red Wi-Fi actual
 
 Verificado el 23/10/2026: interfaz Wi-Fi, IPv4 192.168.1.20, puerta de enlace 192.168.1.1. Backend: http://192.168.1.20:5186. Navegador de la PC: http://localhost:5186. El backend escucha en http://0.0.0.0:5186; 0.0.0.0 es la dirección de escucha, no una dirección para los teléfonos.

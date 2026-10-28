@@ -24,7 +24,7 @@ internal static class PruebasCuentasSql
         await db.Database.EnsureCreatedAsync();
         var mapper = new MapperConfiguration(c => c.AddProfile<AutoMapperProfile>(), NullLoggerFactory.Instance).CreateMapper();
         using var unidad = new UnidadTrabajoEF(db);
-        var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+        var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
         var sufijo = Guid.NewGuid().ToString("N")[..10];
         var primero = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "GoogleSQL_" + sufijo }).Data!;
         var segundo = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "OtroSQL_" + sufijo }).Data!;
@@ -45,7 +45,7 @@ internal static class PruebasCuentasSql
             await salida.Task;
             await using var contexto = new TetrisDBContext(opciones);
             using var trabajo = new UnidadTrabajoEF(contexto);
-            var servicio = new AccesoUsuarioLJ(trabajo, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+            var servicio = new AccesoUsuarioLJ(trabajo, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             try
             {
                 return servicio.RecuperarConCodigo(codigo).Success;

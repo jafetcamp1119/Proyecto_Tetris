@@ -24,6 +24,7 @@ builder.Host.UseDefaultServiceProvider(opciones =>
     opciones.ValidateOnBuild = true;
 });
 builder.Services.AgregarApiTetris();
+builder.Services.AgregarConexionPublicada();
 
 builder.Services.AgregarSeguridad(builder.Configuration, builder.Environment);
 builder.Services.AddDbContext<TetrisDBContext>(opciones =>
@@ -70,6 +71,7 @@ app.UseExceptionHandler(error =>
         await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail("Ocurrió un error al procesar la solicitud."));
     });
 });
+app.UsarConexionPublicada(app.Environment.IsDevelopment());
 app.UseCors(ConfiguracionSeguridad.PoliticaCors);
 app.UseAuthentication();
 app.UseAuthorization();

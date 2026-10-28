@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { SocialLogin } from '@capgo/capacitor-social-login';
 import { environment } from '../../environments/environment';
 import { IAutenticacion } from '../modelos/tetris.model';
@@ -10,11 +10,35 @@ export interface DesafioGoogle {
     nonce: string;
 }
 
+interface RegistroGooglePendiente {
+    requiereRegistro: true;
+    comprobanteRegistro: string;
+    expiraEnUtc: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GoogleServicio {
     private readonly api = inject(ApiServicio);
     private readonly acceso = inject(AutenticacionServicio);
     private inicializacion?: Promise<void>;
+    readonly registroPendiente = signal<RegistroGooglePendiente | null>(null);
+
+    cancelarRegistro(): void { this.registroPendiente.set(null); }
+
+    async registrar(nombreUsuario: string): Promise<void> {
+        const pendiente = this.registroPendiente();
+        if (!pendiente || Date.parse(pendiente.expiraEnUtc) <= Date.now()) {
+            this.cancelarRegistro();
+            throw new Error('La verificación venció. Continuá nuevamente con Google.');
+        }
+        if (this.acceso.sesion()) { throw new Error('Ya ingresaste con un jugador. Usá Vincular Google desde su perfil.'); }
+        const sesion = await this.api.solicitar<IAutenticacion>('/api/google/registrar', 'POST', {
+            nombreUsuario: nombreUsuario.trim(), comprobanteRegistro: pendiente.comprobanteRegistro
+        });
+        if (this.acceso.sesion()) { throw new Error('La sesión cambió durante el registro. El jugador actual se conserva.'); }
+        await this.acceso.guardarSesion(sesion);
+        this.cancelarRegistro();
+    }
 
     preparar(vincular: boolean): Promise<DesafioGoogle> {
         return vincular
@@ -31,11 +55,12 @@ export class GoogleServicio {
             if (this.acceso.sesion()) {
                 throw new Error('Ya ingresaste con un jugador. Vinculá Google desde su perfil o elegí Cambiar de jugador.');
             }
-            const sesion = await this.api.solicitar<IAutenticacion>('/api/google/ingresar', 'POST', datos);
+            const sesion = await this.api.solicitar<IAutenticacion | RegistroGooglePendiente>('/api/google/ingresar', 'POST', datos);
             if (this.acceso.sesion()) {
                 throw new Error('La sesión cambió mientras Google se verificaba. El jugador actual se conserva.');
             }
-            await this.acceso.guardarSesion(sesion);
+            if ('requiereRegistro' in sesion && sesion.requiereRegistro) { this.registroPendiente.set(sesion); }
+            else { await this.acceso.guardarSesion(sesion as IAutenticacion); this.cancelarRegistro(); }
         }
     }
 

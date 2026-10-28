@@ -33,7 +33,7 @@ internal static class PruebasIdentidadSql
             await salida.Task;
             await using var contexto = new TetrisDBContext(opciones);
             using var unidad = new UnidadTrabajoEF(contexto);
-            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var nickname = numero % 2 == 0 ? nombre.ToUpperInvariant() : " " + nombre.ToLowerInvariant() + " ";
             return acceso.Registrar(new TRegistroUsuario { NombreUsuario = nickname });
         })).ToArray();
@@ -44,7 +44,7 @@ internal static class PruebasIdentidadSql
 
         await using var db = new TetrisDBContext(opciones);
         using var unidadPrueba = new UnidadTrabajoEF(db);
-        var servicio = new AccesoUsuarioLJ(unidadPrueba, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+        var servicio = new AccesoUsuarioLJ(unidadPrueba, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
         var sesion = respuestas.Single(respuesta => respuesta.Success).Data!;
         var credencial = await db.Set<CredencialDispositivo>().SingleAsync(dato => dato.UsuarioId == sesion.Usuario.UsuarioId);
         Verificar(credencial.HashCredencial != sesion.Credencial && credencial.HashCredencial.Length == 64, "SQL solo conserva el hash");

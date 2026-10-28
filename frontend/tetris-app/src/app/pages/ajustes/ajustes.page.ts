@@ -25,7 +25,8 @@ import { ServicioAudio } from '../../servicios/audio.servicio';
                         <input type="range" min="0" max="100" [ngModel]="audio.preferencias().volumenEfectos"
                             (ngModelChange)="audio.ajustar({volumenEfectos: +$event})">
                     </label>
-                    <button class="accion" (click)="probar()">Probar sonido</button>
+                    <button class="accion" data-sin-clic (click)="probar()">Probar sonido</button>
+                    <p>El porcentaje controla la ganancia del juego; no cambia el volumen físico del dispositivo.</p>
                     <p>Los ajustes se guardan automáticamente para tu jugador en este dispositivo.</p>
                 </section>
             </main>
@@ -36,7 +37,6 @@ export class AjustesPage {
     readonly audio = inject(ServicioAudio);
 
     probar(): void {
-        this.audio.desbloquear();
-        this.audio.reproducirEfecto('clic');
+        void this.audio.probarSonido();
     }
 }

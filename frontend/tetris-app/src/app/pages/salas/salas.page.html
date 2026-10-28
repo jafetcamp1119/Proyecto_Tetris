@@ -9,6 +9,7 @@
         @if (accion === 'privada') {
             <section class="tarjeta-tetris ingreso-privado">
                 <h2>Ingresá el código de tu sala</h2>
+                <p>Sirve para salas públicas y privadas. No es el código de recuperación de tu cuenta.</p>
                 <form (ngSubmit)="porCodigo()">
                     <label for="codigo-sala">Código de seis caracteres</label>
                     <input id="codigo-sala" name="codigo" class="codigo-sala" [(ngModel)]="codigo" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="A7K92P">
@@ -23,6 +24,7 @@
                 @for (sala of publicas; track sala.id) {
                     <article class="fila-resultado">
                         <strong>Sala de {{ sala.creadorNombre }}</strong>
+                        <app-codigo-sala [codigo]="sala.codigo" />
                         <p>{{ nombreModo(sala.modo) }} · {{ sala.jugadores }} / {{ sala.maximoJugadores }} jugadores</p>
                         @if (sala.modo === 'Compartido') { <p>{{ sala.piezasEspecialesActivas ? 'Con piezas especiales' : 'Solo piezas normales' }}</p> }
                         <button class="accion" [disabled]="cargando" (click)="unirse(sala.id)">Entrar</button>

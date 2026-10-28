@@ -79,7 +79,8 @@ internal static class PruebasSql
                     throw new Exception("La partida no finalizó.");
                 }
 
-                var partida = await db.Partidas.SingleAsync(p => p.CodigoSala == final.Codigo);
+                var identificador = final.Id.ToString("N")[..12];
+                var partida = await db.Partidas.SingleAsync(p => p.CodigoSala == identificador);
                 var resultados = await db.Resultados.Where(r => r.PartidaId == partida.PartidaId).ToListAsync();
                 if (resultados.Count != cantidad || resultados.Any(r => r.PosicionFinal != (modo == ModoJuego.Compartido && !r.EsGanador ? 2 : 1)))
                 {
@@ -123,7 +124,8 @@ internal static class PruebasSql
             await registro.GuardarAsync(provisional);
             var cancelada = cancelaciones.Abandonar(cancelacionId, usuarios[0].UsuarioId).Data!;
             await registro.GuardarAsync(cancelada);
-            var entidadCancelada = await db.Partidas.SingleAsync(partida => partida.CodigoSala == cancelada.Codigo);
+            var identificadorCancelada = cancelada.Id.ToString("N")[..12];
+            var entidadCancelada = await db.Partidas.SingleAsync(partida => partida.CodigoSala == identificadorCancelada);
             if (entidadCancelada.Estado != "Cancelada" || entidadCancelada.GanadorId != null
                 || await db.Resultados.AnyAsync(resultado => resultado.PartidaId == entidadCancelada.PartidaId))
             {
@@ -207,7 +209,7 @@ internal static class PruebasSql
             }
         }
 
-        var codigoSala = salas.Obtener(id, usuarios[0].UsuarioId).Data!.Codigo;
+        var codigoSala = id.ToString("N")[..12];
         var codigosRondas = new[] { codigoSala, codigoSala + "-2" };
         var partidas = await db.Partidas.Where(partida => codigosRondas.Contains(partida.CodigoSala)).ToListAsync();
         var identificadores = partidas.Select(partida => partida.PartidaId).ToArray();

@@ -26,6 +26,9 @@ export interface IRecuperarSesion {
 }
 
 export interface IAutenticacion extends IUsuario {
+  codigoRecuperacionNuevo?: string | null;
+  codigoRecuperacionPorConfirmar?: boolean;
+  salaActivaId?: string | null;
   token: string;
   tipoToken: 'Bearer';
   // Solo llega al registrarse; guardar inmediatamente en almacenamiento seguro nativo.
@@ -101,7 +104,7 @@ export interface IPuntosLineas {
 export interface ICrearSala {
   modo: ModoJuego;
   maximoJugadores: number;
-  // true: la sala no aparece en el listado y se entra con codigoPrivado.
+  // true: oculta la sala multijugador del listado. Individual no recibe código de ingreso.
   privada?: boolean;
   piezasEspeciales?: IConfiguracionPiezas;
   // Sin enviar: las siete. Si se envía, al menos una.
@@ -146,7 +149,25 @@ export interface ICelda {
   columna: number;
 }
 
+export interface IPiezaSiguiente {
+  tipoPieza: number;
+  celdas: ICelda[];
+  piezaEspecial: string | null;
+}
+
+export interface IVistaPreviaPrivada {
+  salaId: string;
+  usuarioId: number;
+  numeroRonda: number;
+  version: number;
+  pieza: IPiezaSiguiente | null;
+}
+
 export interface ITablero {
+  fila?: number;
+  columna?: number;
+  rotacion?: number;
+  piezaSecuencia?: number;
   usuarioId: number | null;
   celdas: number[][];
   tipoPieza: number;
@@ -222,6 +243,7 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
+  progresoCompartido?: { filasNormales: number; nivel: number; progresoSiguienteNivel: number; intervaloCaidaMs: number } | null;
   numeroRonda: number;
   // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
   efectos: IEfectoTemporal[];
@@ -241,7 +263,7 @@ export interface ISala {
   fechaInicio: string | null;
   fechaFin: string | null;
   privada: boolean;
-  // Código de 6 caracteres para invitar a una sala privada; null en las salas públicas.
+  // Alias de codigo para clientes anteriores; null en salas públicas.
   codigoPrivado: string | null;
   piezasEspeciales: IConfiguracionPiezas;
   pausa: IPausa;

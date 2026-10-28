@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ISala, ITablero } from '../modelos/tetris.model';
 import { ServicioAudio } from './audio.servicio';
@@ -40,7 +41,7 @@ describe('Audio del juego', () => {
         AudioSimulado.instancias = [];
         vi.stubGlobal('Audio', AudioSimulado);
         vi.useFakeTimers();
-        audio = new ServicioAudio();
+        audio = TestBed.runInInjectionContext(() => new ServicioAudio());
         audio.usarJugador(1);
     });
 
@@ -74,7 +75,8 @@ describe('Audio del juego', () => {
         sala.estado = 'Finalizada';
         audio.actualizarSala(sala, 1, true);
         expect(musica.src).toContain('musica/menu_y_espera.mp3');
-        expect(AudioSimulado.instancias).toHaveLength(1);
+        // El resultado competitivo puede reproducir un efecto sin duplicar la música.
+        expect(AudioSimulado.instancias.filter(instancia => instancia.src.includes('/musica/'))).toHaveLength(1);
     });
 
     it('pausa música y tablero, y reanuda sin duplicar la canción', () => {
@@ -103,13 +105,19 @@ describe('Audio del juego', () => {
         audio.reproducirEfecto('rotacion');
         expect(AudioSimulado.instancias[0].paused).toBe(true);
         expect(efectos()[0].volume).toBe(0.8);
-        const reabierto = new ServicioAudio();
+        const reabierto = TestBed.runInInjectionContext(() => new ServicioAudio());
         reabierto.usarJugador(1);
         expect(reabierto.preferencias().volumenMusica).toBe(17);
         expect(reabierto.preferencias().musicaActiva).toBe(false);
+        expect(reabierto.preferencias().volumenEfectos).toBe(80);
+        expect(reabierto.preferencias().efectosActivos).toBe(true);
         reabierto.usarJugador(2);
         expect(reabierto.preferencias().volumenMusica).toBe(35);
+        expect(reabierto.preferencias().volumenEfectos).toBe(65);
         audio.ajustar({ efectosActivos: false, musicaActiva: true });
+        reabierto.usarJugador(1);
+        expect(reabierto.preferencias().efectosActivos).toBe(false);
+        expect(reabierto.preferencias().volumenEfectos).toBe(80);
         expect(efectos()[0].paused).toBe(true);
         expect(AudioSimulado.instancias[0].paused).toBe(false);
     });

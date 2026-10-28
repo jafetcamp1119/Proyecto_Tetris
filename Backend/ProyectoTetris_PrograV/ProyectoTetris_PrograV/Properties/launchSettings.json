@@ -5,7 +5,8 @@
       "launchBrowser": false,
       "applicationUrl": "http://0.0.0.0:5186",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
       }
     },
     "Tetris.SoloLocal": {
@@ -13,9 +14,19 @@
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5186",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    },
+    "Tetris.Presentacion": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "run --project \"$(ProjectDir)..\\Tetris.Presentacion\\Tetris.Presentacion.csproj\" --no-launch-profile",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "DOTNET_ENVIRONMENT": "Production"
       }
     }
   }
 }
-

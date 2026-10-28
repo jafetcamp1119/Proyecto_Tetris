@@ -1,5 +1,5 @@
 import { mensajeParaJugador } from '../servicios/mensajes-jugador';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
@@ -13,7 +13,7 @@ import { GoogleAccesoComponent } from '../componentes/google-acceso.component';
     standalone: true,
     imports: [FormsModule, IonContent, GoogleAccesoComponent]
 })
-export class LoginPage {
+export class LoginPage implements OnInit {
     readonly acceso = inject(AutenticacionServicio);
     private readonly router = inject(Router);
     private readonly vista = inject(ChangeDetectorRef);

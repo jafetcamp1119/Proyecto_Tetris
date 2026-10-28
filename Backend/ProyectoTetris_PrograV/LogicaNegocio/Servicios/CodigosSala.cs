@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 
 namespace LogicaJuego.Servicios;
 
-// Genera los códigos de las salas privadas. Son aleatorios (no se pueden deducir de otro dato),
+// Genera los códigos de las salas multijugador. Son aleatorios (no se pueden deducir de otro dato),
 // cortos para compartirlos y únicos entre las salas activas.
 internal sealed class CodigosSala
 {

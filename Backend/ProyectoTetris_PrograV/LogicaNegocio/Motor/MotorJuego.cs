@@ -8,18 +8,6 @@ public class MotorJuego : IMotorJuego
 {
     private readonly GeneradorPiezas generador;
 
-    // I, O, T, S, Z, J y L dentro de una caja de cuatro filas y cuatro columnas.
-    private static readonly (int F, int C)[][] Formas =
-    {
-        new[] { (1, 0), (1, 1), (1, 2), (1, 3) },
-        new[] { (0, 1), (0, 2), (1, 1), (1, 2) },
-        new[] { (0, 1), (1, 0), (1, 1), (1, 2) },
-        new[] { (0, 1), (0, 2), (1, 0), (1, 1) },
-        new[] { (0, 0), (0, 1), (1, 1), (1, 2) },
-        new[] { (0, 0), (1, 0), (1, 1), (1, 2) },
-        new[] { (0, 2), (1, 0), (1, 1), (1, 2) }
-    };
-
     public MotorJuego() : this(new GeneradorPiezas())
     {
     }
@@ -42,26 +30,9 @@ public class MotorJuego : IMotorJuego
         return tablero;
     }
 
-    private static (int F, int C)[] Bloques(int tipo, int rotacion)
-    {
-        var bloques = Formas[tipo].ToArray();
-
-        if (tipo == 1)
-        {
-            return bloques;
-        }
-
-        for (var vuelta = 0; vuelta < rotacion; vuelta++)
-        {
-            bloques = bloques.Select(bloque => (bloque.C, 3 - bloque.F)).ToArray();
-        }
-
-        return bloques;
-    }
-
     private static bool Cabe(TableroJuego tablero, int fila, int columna, int rotacion)
     {
-        foreach (var bloque in Bloques(tablero.TipoPieza, rotacion))
+        foreach (var bloque in FormasPieza.Bloques(tablero.TipoPieza, rotacion))
         {
             var filaFinal = fila + bloque.F;
             var columnaFinal = columna + bloque.C;
@@ -82,8 +53,12 @@ public class MotorJuego : IMotorJuego
 
     private void NuevaPieza(TableroJuego tablero)
     {
-        tablero.TipoPieza = generador.SortearForma(tablero.Piezas.FormasPermitidas);
-        tablero.PiezaEspecial = generador.SortearEspecial(tablero.Piezas);
+        tablero.PiezaSecuencia++;
+        var preparada = tablero.SiguientePieza ?? generador.PrepararPieza(tablero.Piezas);
+        tablero.TipoPieza = preparada.TipoPieza;
+        tablero.PiezaEspecial = preparada.Especial;
+        // Compartido prepara la siguiente pieza por jugador, bajo el bloqueo de la sala.
+        tablero.SiguientePieza = tablero.EsCompartido ? null : generador.PrepararPieza(tablero.Piezas);
         tablero.Rotacion = 0;
         tablero.Fila = 0;
         tablero.Columna = 3;
@@ -179,7 +154,7 @@ public class MotorJuego : IMotorJuego
 
     private PasoJuego Fijar(TableroJuego tablero)
     {
-        foreach (var bloque in Bloques(tablero.TipoPieza, tablero.Rotacion))
+        foreach (var bloque in FormasPieza.Bloques(tablero.TipoPieza, tablero.Rotacion))
         {
             if (tablero.Fila + bloque.F < 0)
             {
@@ -284,7 +259,7 @@ public class MotorJuego : IMotorJuego
             return null;
         }
 
-        var bloques = Bloques(tablero.TipoPieza, tablero.Rotacion);
+        var bloques = FormasPieza.Bloques(tablero.TipoPieza, tablero.Rotacion);
         var eliminadas = new List<(int Fila, int Columna)>();
 
         if (especial.EliminaColumna)
@@ -405,7 +380,7 @@ public class MotorJuego : IMotorJuego
 
         if (!tablero.Perdido)
         {
-            foreach (var bloque in Bloques(tablero.TipoPieza, tablero.Rotacion))
+            foreach (var bloque in FormasPieza.Bloques(tablero.TipoPieza, tablero.Rotacion))
             {
                 pieza.Add(new TCelda(tablero.Fila + bloque.F, tablero.Columna + bloque.C));
             }
@@ -421,7 +396,7 @@ public class MotorJuego : IMotorJuego
             tablero.Nivel,
             tablero.Perdido,
             tablero.PiezaEspecial?.Codigo,
-            ProyectarEvento(tablero));
+            ProyectarEvento(tablero), tablero.Fila, tablero.Columna, tablero.Rotacion, tablero.PiezaSecuencia);
     }
 
     private static TEventoTablero? ProyectarEvento(TableroJuego tablero)

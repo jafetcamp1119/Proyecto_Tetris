@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, OnDestroy, inject, signal } from '@angular/core';
+import { RendimientoServicio } from './rendimiento.servicio';
 import { ISala, ITablero } from '../modelos/tetris.model';
+import { EfectosPreparados } from './efectos-preparados';
 
 export type MusicaJuego = 'menu' | 'partida';
 export type EfectoAudio = 'movimiento' | 'rotacion' | 'caida' | 'bloqueo' | 'lineas'
@@ -30,7 +32,17 @@ const preferenciasIniciales: PreferenciasAudio = {
 };
 
 @Injectable({ providedIn: 'root' })
-export class ServicioAudio {
+export class ServicioAudio implements OnDestroy {
+    private readonly rendimiento = inject(RendimientoServicio);
+    private readonly efectosPreparados = new EfectosPreparados<EfectoAudio>((efecto, ms) => {
+        this.rendimiento.muestra('audio_silencio_recortado_' + efecto + '_ms', ms);
+        this.recuperarResultado();
+    }, disponible => {
+        this.requiereInteraccion.set(!disponible);
+        if (disponible) { this.recuperarResultado(); }
+    }, evento => this.rendimiento.contar('audio_' + evento));
+    private readonly rutasEfectos = Object.fromEntries(Object.entries(archivosAudio.efectos)
+        .map(([efecto, archivo]) => [efecto, 'assets/audio/efectos/' + archivo])) as Record<EfectoAudio, string>;
     readonly preferencias = signal<PreferenciasAudio>({ ...preferenciasIniciales });
     readonly requiereInteraccion = signal(true);
     private jugadorId: number | null | undefined;
@@ -49,12 +61,16 @@ export class ServicioAudio {
     private ataque = 0;
     private derrotaEscuchada = false;
     private resultadoEscuchado = false;
+    private resultadoPendiente?: { efecto: EfectoAudio; ronda: string; vence: number };
+    private pruebaActual = 0;
 
     usarJugador(usuarioId: number | null): void {
         if (this.jugadorId === usuarioId) {
             return;
         }
         this.jugadorId = usuarioId;
+        this.resultadoPendiente = undefined;
+        this.detenerEfectos();
         let guardadas: Partial<PreferenciasAudio> = {};
         try {
             guardadas = JSON.parse(localStorage.getItem(this.clavePreferencias()) || '{}');
@@ -83,13 +99,26 @@ export class ServicioAudio {
         this.aplicarVolumen();
     }
 
-    desbloquear(): void {
-        if (this.habilitado && !this.requiereInteraccion()) {
-            return;
-        }
+    desbloquear(): Promise<void> {
+        const preparacion = this.efectosPreparados.preparar(this.rutasEfectos);
         this.habilitado = true;
-        this.requiereInteraccion.set(false);
+        if (!this.efectosPreparados.usaWebAudio) { this.requiereInteraccion.set(false); }
         this.aplicarVolumen();
+        return preparacion.then(() => {
+            this.requiereInteraccion.set(this.efectosPreparados.usaWebAudio && !this.efectosPreparados.disponible);
+            this.recuperarResultado();
+        });
+    }
+
+    async probarSonido(): Promise<void> {
+        const prueba = ++this.pruebaActual;
+        this.detenerEfectos();
+        if (!this.preferencias().efectosActivos || this.preferencias().volumenEfectos === 0) { return; }
+        await this.desbloquear();
+        if (prueba === this.pruebaActual) {
+            this.ultimosSonidos.delete('bloqueo');
+            this.reproducirEfecto('bloqueo');
+        }
     }
 
     cambiarMusica(pista: MusicaJuego): void {
@@ -114,20 +143,30 @@ export class ServicioAudio {
         }
     }
 
-    reproducirEfecto(efecto: EfectoAudio): void {
+    reproducirEfecto(efecto: EfectoAudio): boolean {
         const opciones = this.preferencias();
         if (!this.habilitado || !opciones.efectosActivos || opciones.volumenEfectos === 0 || this.aplicacionOculta) {
-            return;
+            return false;
         }
         if (this.partidaPausada && efecto !== 'clic') {
-            return;
+            return false;
         }
         const ahora = Date.now();
         const intervalo = efecto === 'movimiento' ? 95 : 45;
         if (ahora - (this.ultimosSonidos.get(efecto) ?? -Infinity) < intervalo) {
-            return;
+            return false;
         }
-        this.ultimosSonidos.set(efecto, ahora);
+        const volumen = opciones.volumenEfectos / 100 * (efecto === 'movimiento' ? 0.22 : 1);
+        if (this.efectosPreparados.reproducir(efecto, volumen)) {
+            this.reproducciones.get(efecto)?.pause();
+            this.ultimosSonidos.set(efecto, ahora);
+            return true;
+        }
+        if (this.efectosPreparados.usaWebAudio) {
+            if (!this.efectosPreparados.disponible) { this.requiereInteraccion.set(true); }
+            this.rendimiento.contar('audio_efecto_no_disponible');
+            return false;
+        }
         let audio = this.reproducciones.get(efecto);
         if (!audio) {
             audio = new Audio(`assets/audio/efectos/${archivosAudio.efectos[efecto]}`);
@@ -138,12 +177,14 @@ export class ServicioAudio {
         audio.pause();
         audio.currentTime = 0;
         audio.volume = opciones.volumenEfectos / 100 * (efecto === 'movimiento' ? 0.22 : 1);
+        this.ultimosSonidos.set(efecto, ahora);
         void audio.play().catch(error => {
             if (error?.name === 'NotAllowedError') {
                 this.requiereInteraccion.set(true);
             }
-            console.debug('No se pudo reproducir un efecto de audio.', error);
+            this.rendimiento.contar('audio_html_rechazado');
         });
+        return true;
     }
 
     actualizarSala(sala: ISala, usuarioId: number, enVivo: boolean): void {
@@ -156,6 +197,7 @@ export class ServicioAudio {
             this.ataque = 0;
             this.derrotaEscuchada = false;
             this.resultadoEscuchado = false;
+            this.resultadoPendiente = undefined;
         }
         this.pista = sala.estado === 'EnCurso' ? 'partida' : 'menu';
         this.partidaPausada = sala.estado === 'EnCurso' && sala.pausa.fase === 'Pausada';
@@ -177,18 +219,40 @@ export class ServicioAudio {
             }
             this.ataque = activacion.secuencia;
         }
-        if (jugador?.perdido && !this.derrotaEscuchada) {
-            if (reproducir) {
-                this.reproducirEfecto('derrota');
-            }
+        this.procesarResultado(sala, usuarioId, reproducir);
+    }
+
+    private procesarResultado(sala: ISala, usuarioId: number, reproducir: boolean): void {
+        const jugador = sala.jugadores.find(j => j.usuarioId === usuarioId);
+        const finalizada = sala.estado === 'Finalizada';
+        const ganador = finalizada && sala.modo !== 'Individual' && sala.ganadores.includes(usuarioId);
+        if (jugador?.perdido && !this.derrotaEscuchada && !ganador) {
+            if (reproducir) { this.solicitarResultado('derrota'); }
             this.derrotaEscuchada = true;
         }
-        if (sala.estado === 'Finalizada' && !this.resultadoEscuchado) {
-
-            if (reproducir && sala.modo !== 'Individual' && sala.ganadores.includes(usuarioId)) {                this.reproducirEfecto('victoria');
-            }
-            this.resultadoEscuchado = true;
+        if (!finalizada || this.resultadoEscuchado) { return; }
+        if (reproducir && jugador) {
+            if (ganador) { this.solicitarResultado('victoria'); }
+            else if (!this.derrotaEscuchada) { this.solicitarResultado('derrota'); }
         }
+        this.resultadoEscuchado = true;
+    }
+
+    private solicitarResultado(efecto: EfectoAudio): void {
+        if (this.reproducirEfecto(efecto)) { this.resultadoPendiente = undefined; return; }
+        if (this.habilitado && this.preferencias().efectosActivos && this.preferencias().volumenEfectos > 0 && !this.aplicacionOculta) {
+            this.resultadoPendiente = { efecto, ronda: this.ronda, vence: Date.now() + 10000 };
+        }
+    }
+
+    private recuperarResultado(): void {
+        const pendiente = this.resultadoPendiente;
+        if (!pendiente) { return; }
+        if (pendiente.ronda !== this.ronda || pendiente.vence < Date.now() || !this.preferencias().efectosActivos || this.preferencias().volumenEfectos === 0) {
+            this.resultadoPendiente = undefined;
+            return;
+        }
+        if (this.reproducirEfecto(pendiente.efecto)) { this.resultadoPendiente = undefined; }
     }
 
     private procesarTablero(tablero: ITablero, reproducir: boolean): void {
@@ -225,7 +289,9 @@ export class ServicioAudio {
 
     private aplicarVolumen(): void {
         const opciones = this.preferencias();
-        if (!opciones.efectosActivos) {
+        this.efectosPreparados.ajustarVolumen(opciones.volumenEfectos / 100, 'movimiento');
+        if (!opciones.efectosActivos || opciones.volumenEfectos === 0) {
+            this.resultadoPendiente = undefined;
             this.detenerEfectos();
         }
         for (const [efecto, audio] of this.reproducciones) {
@@ -258,16 +324,25 @@ export class ServicioAudio {
                         this.requiereInteraccion.set(true);
                     }
                 }
-                console.debug('No se pudo iniciar la música.', error);
+                this.rendimiento.contar('audio_musica_rechazada');
             });
         }
     }
 
     private detenerEfectos(): void {
+        this.efectosPreparados.detener();
         for (const audio of this.reproducciones.values()) {
             audio.pause();
             audio.currentTime = 0;
         }
+    }
+
+    ngOnDestroy(): void {
+        this.resultadoPendiente = undefined;
+        this.pruebaActual++;
+        this.musica?.pause();
+        this.detenerEfectos();
+        this.efectosPreparados.cerrar();
     }
 
     private clavePreferencias(): string {

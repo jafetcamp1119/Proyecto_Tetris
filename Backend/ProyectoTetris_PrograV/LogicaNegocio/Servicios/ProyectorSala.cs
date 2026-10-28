@@ -21,7 +21,7 @@ internal sealed class ProyectorSala
 
         return new TSala(
             sala.Id,
-            sala.Id.ToString("N")[..12],
+            sala.CodigoIngreso ?? string.Empty,
             sala.Creador,
             sala.Modo,
             sala.Estado,
@@ -35,7 +35,7 @@ internal sealed class ProyectorSala
             sala.Inicio,
             sala.Fin,
             sala.Privada,
-            sala.CodigoPrivado,
+            sala.Privada ? sala.CodigoIngreso : null,
             ProyectarConfiguracionPiezas(sala.Piezas),
             Pausa(sala, DateTime.UtcNow, null),
             ProyectarPiezasNormales(sala.Piezas),
@@ -46,7 +46,10 @@ internal sealed class ProyectorSala
             sala.MotivoFin,
             sala.Jugadores.SelectMany(jugador => jugador.Efectos).ToArray(),
             CopiarUltimoEfecto(sala),
-            sala.NumeroRonda);
+            sala.NumeroRonda,
+            sala.Modo == ModoJuego.Compartido ? new TProgresoCompartido(sala.Compartido?.Lineas ?? 0,
+                sala.Compartido?.Nivel ?? 1, (sala.Compartido?.Lineas ?? 0) % 10,
+                sala.Compartido?.IntervaloCaidaMs ?? sala.Piezas.IntervaloBaseMs) : null);
     }
 
     private static TActivacionEspecial? CopiarUltimoEfecto(SalaMemoria sala)
@@ -83,7 +86,7 @@ internal sealed class ProyectorSala
 
         return new TSalaPublica(
             sala.Id,
-            sala.Id.ToString("N")[..12],
+            sala.CodigoIngreso!,
             sala.Modo,
             creador?.Nombre ?? string.Empty,
             sala.Jugadores.Count,
@@ -165,7 +168,7 @@ internal sealed class ProyectorSala
                 jugador.Nombre,
                 jugador.Puntos,
                 jugador.Lineas,
-                jugador.Nivel,
+                sala.Compartido?.Nivel ?? jugador.Nivel,
                 jugador.Perdido,
                 jugador.Listo,
                 jugador.Conexiones.Count > 0,

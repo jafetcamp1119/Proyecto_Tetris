@@ -19,10 +19,16 @@ public class TAccesoGoogle
     public string DesafioId { get; set; } = "";
 }
 
+public class TRegistroGoogle : TRegistroUsuario
+{
+    [Required, StringLength(64, MinimumLength = 64)]
+    public string ComprobanteRegistro { get; set; } = "";
+}
+
 [ApiController, Route("api/google"), EnableRateLimiting("Acceso")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class GoogleController(IValidadorGoogle validador, DesafiosGoogle desafios,
-    IAccesoUsuarioLJ acceso, ServicioToken tokens) : ControllerBase
+    IAccesoUsuarioLJ acceso, PublicadorSesion publicadorSesion, RegistrosGoogle registros) : ControllerBase
 {
     private int UsuarioId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -50,14 +56,32 @@ public class GoogleController(IValidadorGoogle validador, DesafiosGoogle desafio
         var respuesta = acceso.IngresarGoogle(identidad.Subject);
         if (!respuesta.Success)
         {
+            if (respuesta.CodigoError == "GoogleSinVincular")
+            {
+                return Ok(Respuesta<object>.Ok(registros.Crear(identidad.Subject, AvatarSeguro(identidad.Picture))));
+            }
             return Conflict(respuesta);
         }
 
         var sesion = respuesta.Data!;
-        var autenticacion = tokens.Crear(sesion.Usuario, sesion.SesionId);
-        autenticacion.Credencial = sesion.Credencial;
-        autenticacion.CredencialExpiraEnUtc = sesion.CredencialExpiraEnUtc;
+        var autenticacion = await publicadorSesion.CrearAsync(sesion);
+        if (autenticacion == null) { return Conflict(Respuesta<object>.Fail("La cuenta cambio durante el ingreso. Reintenta.", "SesionCambioConcurrente")); }
         return Ok(Respuesta<TAutenticacion>.Ok(autenticacion));
+    }
+
+    [HttpPost("registrar")]
+    public async Task<IActionResult> Registrar(TRegistroGoogle datos)
+    {
+        var respuesta = registros.Completar(datos.ComprobanteRegistro, datos, acceso);
+        if (!respuesta.Success) { return Conflict(respuesta); }
+        var autenticacion = await publicadorSesion.CrearAsync(respuesta.Data!);
+        if (autenticacion == null) { return Conflict(Respuesta<object>.Fail("La cuenta cambio durante el ingreso. Reintenta.", "SesionCambioConcurrente")); }
+        return Ok(Respuesta<TAutenticacion>.Ok(autenticacion));
+    }
+
+    private static string? AvatarSeguro(string? avatar)
+    {
+        return Uri.TryCreate(avatar, UriKind.Absolute, out var url) && url.Scheme == "https" && avatar!.Length <= 2048 ? avatar : null;
     }
 
     [Authorize, HttpPost("vincular")]
@@ -69,9 +93,8 @@ public class GoogleController(IValidadorGoogle validador, DesafiosGoogle desafio
             return Unauthorized(Respuesta<object>.Fail("No se pudo verificar Google. El perfil no cambió.", "GoogleInvalido"));
         }
 
-        var avatar = Uri.TryCreate(identidad.Picture, UriKind.Absolute, out var url)
-            && url.Scheme == "https" && identidad.Picture.Length <= 2048 ? identidad.Picture : null;
-        var respuesta = acceso.VincularGoogle(UsuarioId, identidad.Subject, avatar);
+        var avatar = AvatarSeguro(identidad.Picture);
+        var respuesta = acceso.VincularGoogle(UsuarioId, identidad.Subject, avatar, Guid.Parse(User.FindFirstValue("sid")!));
         return respuesta.Success ? Ok(respuesta) : Conflict(respuesta);
     }
 

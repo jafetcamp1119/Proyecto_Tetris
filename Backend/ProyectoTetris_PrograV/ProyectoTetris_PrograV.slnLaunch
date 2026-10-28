@@ -1,0 +1,20 @@
+[
+  {
+    "Name": "Tetris.API",
+    "Projects": [
+      {
+        "Path": "ProyectoTetris_PrograV\\ProyectoTetris_PrograV.csproj",
+        "Action": "Start"
+      }
+    ]
+  },
+  {
+    "Name": "Tetris.Presentacion",
+    "Projects": [
+      {
+        "Path": "Tetris.Presentacion\\Tetris.Presentacion.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

@@ -22,7 +22,7 @@ internal static class PruebasCuentasGoogle
         prueba("Vincular Google conserva UsuarioId, nickname, credenciales y estadísticas", () =>
         {
             using var unidad = new UnidadMemoria();
-            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var invitado = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Invitada" }).Data!;
             unidad.Estadisticas.Datos.Add(new EstadisticasJugador { UsuarioId = invitado.Usuario.UsuarioId, PuntuacionMaxima = 8500, PartidasGanadas = 3 });
             var perfil = acceso.VincularGoogle(invitado.Usuario.UsuarioId, "google-verificado-123", "https://example.com/avatar");
@@ -38,7 +38,7 @@ internal static class PruebasCuentasGoogle
         prueba("Google de otro perfil no fusiona jugadores ni reemplaza una vinculación", () =>
         {
             using var unidad = new UnidadMemoria();
-            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var primero = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Uno" }).Data!;
             var segundo = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Dos" }).Data!;
             Verificar(acceso.VincularGoogle(primero.Usuario.UsuarioId, "sub-uno", null).Success);
@@ -51,16 +51,19 @@ internal static class PruebasCuentasGoogle
         prueba("Código privado: hash, reemplazo, consumo único y nueva credencial", () =>
         {
             using var unidad = new UnidadMemoria();
-            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+            var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var jugador = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Rescate" }).Data!;
             var anterior = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
             var codigo = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
-            Verificar(codigo.Length == 64 && unidad.Usuarios.Datos.Single().HashRecuperacion != codigo);
+            Verificar(codigo.Length == 14 && CodigosRecuperacion.Normalizar(codigo)?.Length == 12 && unidad.Usuarios.Datos.Single().HashRecuperacion != codigo);
             Verificar(!acceso.RecuperarConCodigo(anterior).Success);
             var recuperado = acceso.RecuperarConCodigo(codigo.ToLowerInvariant());
             Verificar(recuperado.Success && recuperado.Data!.Usuario.UsuarioId == jugador.Usuario.UsuarioId);
             Verificar(recuperado.Data!.Credencial != jugador.Credencial && recuperado.Data.SesionId != jugador.SesionId);
-            Verificar(!acceso.RecuperarConCodigo(codigo).Success && unidad.Usuarios.Datos.Single().HashRecuperacion == null);
+            Verificar(recuperado.Data.CodigoRecuperacionNuevo?.Length == 14 && recuperado.Data.CodigoRecuperacionPorConfirmar);
+            Verificar(acceso.ConfirmarRecuperacion(recuperado.Data.Usuario.UsuarioId, recuperado.Data.SesionId, recuperado.Data.CodigoRecuperacionNuevo!).Success);
+            Verificar(!acceso.RecuperarConCodigo(codigo).Success);
+            Verificar(!acceso.SesionVigente(jugador.SesionId, jugador.Usuario.UsuarioId));
             var vencido = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
             unidad.Usuarios.Datos.Single().RecuperacionExpiraEnUtc = DateTime.UtcNow.AddSeconds(-1);
             Verificar(!acceso.RecuperarConCodigo(vencido).Success);

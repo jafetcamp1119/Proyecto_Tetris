@@ -13,6 +13,8 @@ public interface ISalaLJ
     Respuesta<TSala> UnirsePorCodigo(string codigo, int usuarioId, string nombre);
     Respuesta<TSala> Abandonar(Guid salaId, int usuarioId);
     Respuesta<TSala> Obtener(Guid salaId, int usuarioId);
+    Guid? BuscarActiva(int usuarioId);
+    Respuesta<TVistaPreviaPrivada> ObtenerSiguientePieza(Guid salaId, int usuarioId);
     Respuesta<TSala> Preparar(Guid salaId, int usuarioId, bool listo);
     Respuesta<TSala> Iniciar(Guid salaId, int usuarioId);
     Respuesta<TSala> NuevaRonda(Guid salaId, int usuarioId);

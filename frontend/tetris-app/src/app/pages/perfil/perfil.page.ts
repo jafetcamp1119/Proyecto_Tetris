@@ -1,5 +1,5 @@
 import { mensajeParaJugador } from '../../servicios/mensajes-jugador';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { IonContent } from '@ionic/angular';
@@ -7,13 +7,14 @@ import { IResultado } from '../../modelos/tetris.model';
 import { AutenticacionServicio } from '../../servicios/autenticacion.servicio';
 import { GoogleAccesoComponent } from '../../componentes/google-acceso.component';
 import { DialogosServicio } from '../../servicios/dialogos.servicio';
+import { CodigoRecuperacionComponent } from '../../componentes/codigo-recuperacion.component';
 
 @Component({
     standalone: true,
-    imports: [CommonModule, RouterLink, IonContent, GoogleAccesoComponent],
+    imports: [CommonModule, RouterLink, IonContent, GoogleAccesoComponent, CodigoRecuperacionComponent],
     templateUrl: './perfil.page.html'
 })
-export class PerfilPage {
+export class PerfilPage implements OnInit {
     readonly acceso = inject(AutenticacionServicio);
     private readonly router = inject(Router);
     private readonly vista = inject(ChangeDetectorRef);
@@ -21,7 +22,6 @@ export class PerfilPage {
     private entradaIniciada = false;
     resultados: IResultado[] = [];
     mensaje = '';
-    codigo = '';
     visible = false;
     cargando = false;
 
@@ -68,7 +68,6 @@ export class PerfilPage {
     ionViewDidLeave(): void {
         this.visible = false;
         this.entradaIniciada = false;
-        this.codigo = '';
     }
 
     async guardarCuenta(): Promise<void> {
@@ -76,7 +75,9 @@ export class PerfilPage {
             return;
         }
         try {
-            this.codigo = await this.acceso.solicitar<string>('/api/usuarios/codigo-recuperacion', 'POST');
+            const codigo = await this.acceso.solicitar<string>('/api/usuarios/codigo-recuperacion', 'POST');
+            this.acceso.codigoRecuperacionNuevo.set(codigo);
+            this.acceso.codigoRecuperacionPorConfirmar.set(false);
         } catch (error) {
             this.mensaje = mensajeParaJugador(error, 'No se pudo generar el código.');
         } finally {

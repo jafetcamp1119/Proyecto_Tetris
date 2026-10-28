@@ -98,6 +98,8 @@ public class TMovimiento
 }
 
 public record TCelda(int Fila, int Columna);
+public record TPiezaSiguiente(int TipoPieza, TCelda[] Celdas, string? PiezaEspecial);
+public record TVistaPreviaPrivada(Guid SalaId, int UsuarioId, int NumeroRonda, long Version, TPiezaSiguiente? Pieza);
 public record TTablero(
     int? UsuarioId,
     int[][] Celdas,
@@ -108,7 +110,8 @@ public record TTablero(
     int Nivel,
     bool Perdido,
     string? PiezaEspecial = null,
-    TEventoTablero? Evento = null);
+    TEventoTablero? Evento = null,
+    int Fila = 0, int Columna = 3, int Rotacion = 0, long PiezaSecuencia = 0);
 
 // Qué pasó en la última acción de un tablero, para que el frontend elija el sonido.
 // Sonidos posibles: movimiento, rotacion, bloqueo, lineas, especial, derrota.
@@ -161,7 +164,10 @@ public record TSala(
     string? MotivoFin = null,
     TEfectoTemporal[]? Efectos = null,
     TActivacionEspecial? UltimoEfecto = null,
-    int NumeroRonda = 1);
+    int NumeroRonda = 1,
+    TProgresoCompartido? ProgresoCompartido = null);
+
+public record TProgresoCompartido(int FilasNormales, int Nivel, int ProgresoSiguienteNivel, int IntervaloCaidaMs);
 
 public record TEfectoTemporal(
     int UsuarioId,

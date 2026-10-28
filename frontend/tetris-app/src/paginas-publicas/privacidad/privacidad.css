@@ -1,0 +1,20 @@
+:root { color-scheme: dark; font-family: Arial, sans-serif; color: #f4f6ff; background: #090e1c; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.pantalla-tetris {
+  min-height: 100vh;
+  padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: radial-gradient(ellipse at top left, #7040ff20, transparent 55%), #090e1c;
+}
+.tarjeta-tetris { max-width: 820px; margin: 0 auto; padding: clamp(22px, 5vw, 38px); border: 1px solid #ffffff18; border-radius: 26px; background: linear-gradient(145deg, #1a2238, #11182a); box-shadow: 0 28px 80px #00000040; }
+.etiqueta { margin-top: 28px; color: #aaa2ed; font-size: 11px; font-weight: 800; letter-spacing: 2px; }
+h1 { color: #b08cff; font-size: clamp(28px, 6vw, 38px); line-height: 1.2; }
+h2 { margin-top: 30px; font-size: 21px; line-height: 1.4; color: #ded4fa; }
+p { color: #c1c9dc; font-size: 16px; line-height: 1.8; overflow-wrap: anywhere; }
+a { color: #c6afff; text-underline-offset: 4px; overflow-wrap: anywhere; }
+a:hover { color: #52e2ec; }
+a:focus-visible { outline: 3px solid #72e4ef; outline-offset: 4px; }
+.volver { display: inline-block; padding: 12px 0; min-height: 44px; }
+.fecha { color: #a4aec6; font-size: 14px; }
+.pendientes { margin-top: 30px; padding: 0 20px 8px; border: 1px solid #a17aff60; border-radius: 12px; background: #090f20; }
+footer { margin-top: 24px; border-top: 1px solid #ffffff18; }

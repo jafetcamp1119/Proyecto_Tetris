@@ -12,10 +12,28 @@ public static class ConfiguracionApi
     public static IServiceCollection AgregarApiTetris(this IServiceCollection servicios)
     {
         servicios.AddSingleton<DesafiosGoogle>();
+        servicios.AddSingleton<RegistrosGoogle>();
+        servicios.AddSingleton<ConexionesSesion>();
+        servicios.AddScoped<PublicadorSesion>();
         servicios.AddScoped<IValidadorGoogle, ValidadorGoogle>();
         servicios.AddRateLimiter(opciones =>
         {
             opciones.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            opciones.AddPolicy("Recuperacion", contexto =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    contexto.Connection.RemoteIpAddress?.ToString() ?? "local",
+                    _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+            opciones.AddPolicy("GenerarCodigo", contexto =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    contexto.User.FindFirst("sub")?.Value ?? "anonimo",
+                    _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    { PermitLimit = 3, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
+            opciones.AddPolicy("CrearSala", contexto =>
+                System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    contexto.User.FindFirst("sub")?.Value ?? "anonimo",
+                    _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
             opciones.AddPolicy("Acceso", contexto =>
                 System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
                     contexto.Connection.RemoteIpAddress?.ToString() ?? "local",
@@ -26,7 +44,11 @@ public static class ConfiguracionApi
                         QueueLimit = 0
                     }));
         });
-        servicios.AddControllers()
+        servicios.AddControllers(opciones =>
+        {
+            opciones.Filters.Add<FiltroConcurrenciaSesion>();
+            opciones.Filters.Add<FiltroSesionHttp>();
+        })
             .AddApplicationPart(typeof(UsuariosController).Assembly)
             .AddJsonOptions(opciones =>
             {

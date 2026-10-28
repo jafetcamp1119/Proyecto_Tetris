@@ -7,17 +7,23 @@ import { Subscription } from 'rxjs';
 import { DialogosServicio } from './servicios/dialogos.servicio';
 import { ServicioAudio } from './servicios/audio.servicio';
 import { AutenticacionServicio } from './servicios/autenticacion.servicio';
+import { OrientacionServicio } from './servicios/orientacion.servicio';
+import { OrientacionVerticalComponent } from './componentes/orientacion-vertical.component';
+import { VigilanciaSesionServicio } from './servicios/vigilancia-sesion.servicio';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
-  imports: [IonApp, IonRouterOutlet],
+  styleUrls: ['app.component.scss'],
+  imports: [IonApp, IonRouterOutlet, OrientacionVerticalComponent],
 })
 export class AppComponent implements OnDestroy {
     private readonly router = inject(Router);
     private readonly plataforma = inject(Platform);
     private readonly dialogos = inject(DialogosServicio);
     readonly audio = inject(ServicioAudio);
+    readonly orientacion = inject(OrientacionServicio);
+    readonly vigilancia = inject(VigilanciaSesionServicio);
     private readonly acceso = inject(AutenticacionServicio);
     private retroceso?: Subscription;
     private navegacion: Subscription;
@@ -31,7 +37,12 @@ export class AppComponent implements OnDestroy {
             }
         });
         if (Capacitor.isNativePlatform()) {
-            void App.addListener('appStateChange', estado => this.audio.suspenderAplicacion(!estado.isActive))
+            void App.addListener('appStateChange', estado => {
+                this.audio.suspenderAplicacion(!estado.isActive);
+                // WebView no siempre emite blur al minimizar: liberar los mismos controles de la web.
+                if (!estado.isActive) { window.dispatchEvent(new Event('blur')); }
+                if (estado.isActive) { void this.vigilancia.verificar(true); }
+            })
                 .then(listener => { this.estadoAplicacion = listener; });
             this.retroceso = this.plataforma.backButton.subscribeWithPriority(10, () => {
                 if (['/home', '/login', '/'].includes(this.router.url)) {
@@ -73,5 +84,12 @@ export class AppComponent implements OnDestroy {
     @HostListener('document:visibilitychange')
     cambiarVisibilidad(): void {
         this.audio.suspenderAplicacion(document.hidden);
+        if (!document.hidden) { void this.vigilancia.verificar(); }
+    }
+
+    @HostListener('window:online')
+    @HostListener('window:focus')
+    verificarSesion(): void {
+        void this.vigilancia.verificar();
     }
 }

@@ -28,6 +28,61 @@ describe('Identidades y progreso del dispositivo', () => {
 
     afterEach(() => vi.restoreAllMocks());
 
+    it('una respuesta privada tardía no se entrega a la cuenta nueva', async () => {
+        await acceso.guardarSesion(sesion(1));
+        let completar!: (dato: unknown) => void;
+        solicitar.mockReturnValueOnce(new Promise(resolve => { completar = resolve; }));
+        const pendiente = acceso.solicitar('/api/usuarios/yo');
+        await vi.waitFor(() => expect(solicitar).toHaveBeenCalled());
+        await acceso.guardarSesion(sesion(2));
+        completar({ usuarioId: 1 });
+        await expect(pendiente).rejects.toThrow('sesión cambió');
+        expect(acceso.sesion()?.usuarioId).toBe(2);
+    });
+
+    it('un error al confirmar conserva el codigo; el reintento lo activa sin persistirlo', async () => {
+        const codigo = 'K7PM-42QX-8R2D';
+        await acceso.guardarSesion({ ...sesion(1), codigoRecuperacionNuevo: codigo, codigoRecuperacionPorConfirmar: true });
+        expect(localStorage.getItem('tetris.perfiles.v1')).not.toContain(codigo);
+        solicitar.mockRejectedValueOnce(new Error('Sin red'));
+        await expect(acceso.confirmarCodigoGuardado()).rejects.toThrow('Sin red');
+        expect(acceso.codigoRecuperacionNuevo()).toBe(codigo);
+        expect(acceso.codigoRecuperacionPorConfirmar()).toBe(true);
+        solicitar.mockResolvedValueOnce(true);
+        await acceso.confirmarCodigoGuardado();
+        expect(solicitar).toHaveBeenLastCalledWith('/api/usuarios/confirmar-codigo-recuperacion', 'POST', { credencial: codigo }, 'jwt1');
+        expect(acceso.codigoRecuperacionNuevo()).toBe('');
+        expect(acceso.codigoRecuperacionPorConfirmar()).toBe(false);
+    });
+
+    it('un ID token de Google rechazado no cierra la sesion valida de Tetris', async () => {
+        await acceso.guardarSesion(sesion(1));
+        solicitar.mockRejectedValueOnce(new ErrorApi('Google invalido', 401, 'GoogleInvalido'));
+        await expect(acceso.solicitar('/api/google/vincular', 'POST')).rejects.toThrow();
+        expect(acceso.sesion()?.usuarioId).toBe(1);
+    });
+
+    it('restaurar un dispositivo desplazado no inicia sesion automaticamente ni borra su credencial', async () => {
+        localStorage.setItem('tetris.perfiles.v1', JSON.stringify({ activo: 1, perfiles: [{ usuarioId: 1, nombreUsuario: 'Uno', credencial: sesion(1).credencial }] }));
+        solicitar.mockRejectedValueOnce(new ErrorApi('Sesion reemplazada', 401));
+        await acceso.inicializar();
+        expect(solicitar).toHaveBeenCalledWith('/api/usuarios/renovar', 'POST', { credencial: sesion(1).credencial });
+        expect(solicitar.mock.calls.some(llamada => llamada[0] === '/api/usuarios/recuperar')).toBe(false);
+        expect(acceso.sesion()).toBeNull();
+        expect(acceso.perfiles()[0].credencial).toBe(sesion(1).credencial);
+    });
+
+    it('una respuesta vieja de renovacion no reemplaza la cuenta nueva', async () => {
+        await acceso.guardarSesion({ ...sesion(1), expiraEnUtc: new Date(0).toISOString() });
+        let completar!: (valor: IAutenticacion) => void;
+        solicitar.mockReturnValueOnce(new Promise<IAutenticacion>(resolve => { completar = resolve; }));
+        const renovacion = acceso.token();
+        await acceso.guardarSesion(sesion(2));
+        completar(sesion(1));
+        await expect(renovacion).rejects.toThrow('sesion cambio');
+        expect(acceso.sesion()?.usuarioId).toBe(2);
+    });
+
     it('cambia de jugador conservando la credencial individual sin revocar cuentas', async () => {
         await acceso.inicializar();
         await acceso.guardarSesion(sesion(1));

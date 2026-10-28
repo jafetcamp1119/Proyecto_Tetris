@@ -13,15 +13,18 @@ namespace LogicaJuego.Implementacions;
 public class AccesoUsuarioLJ : IAccesoUsuarioLJ
 {
     private const string NombreOcupado = "Este nombre de usuario ya está en uso. Elegí otro.";
+    private static readonly object CerrojoIdentidades = new();
     private readonly IUnidadTrabajoEF unidad;
     private readonly IMapper mapper;
     private readonly ILogger<AccesoUsuarioLJ> logger;
+    private readonly ProtectorCodigosRecuperacion protectorCodigos;
 
-    public AccesoUsuarioLJ(IUnidadTrabajoEF unidad, IMapper mapper, ILogger<AccesoUsuarioLJ> logger)
+    public AccesoUsuarioLJ(IUnidadTrabajoEF unidad, IMapper mapper, ILogger<AccesoUsuarioLJ> logger, ProtectorCodigosRecuperacion protectorCodigos)
     {
         this.unidad = unidad;
         this.mapper = mapper;
         this.logger = logger;
+        this.protectorCodigos = protectorCodigos;
     }
 
     private static bool NombreValido(string? nombreUsuario)
@@ -50,6 +53,21 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
 
     public Respuesta<TSesionJugador> Registrar(TRegistroUsuario datos)
     {
+        lock (CerrojoIdentidades) { return RegistrarInterno(datos, null, null); }
+    }
+
+    public Respuesta<TSesionJugador> RegistrarGoogle(TRegistroUsuario datos, string sub, string? avatar)
+    {
+        lock (CerrojoIdentidades)
+        {
+            var existente = unidad.TUsuario.ObtenerEntidad(u => u.GoogleSub == sub).Data;
+            if (existente != null) { return IngresarGoogle(sub); }
+            return RegistrarInterno(datos, sub, avatar);
+        }
+    }
+
+    private Respuesta<TSesionJugador> RegistrarInterno(TRegistroUsuario datos, string? sub, string? avatar)
+    {
         var disponibilidad = NombreDisponible(datos.NombreUsuario);
         if (!disponibilidad.Success)
         {
@@ -65,7 +83,9 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
         {
             NombreUsuario = datos.NombreUsuario.Trim(),
             Activo = true,
-            FechaRegistro = DateTime.UtcNow
+            FechaRegistro = DateTime.UtcNow,
+            GoogleSub = sub,
+            AvatarGoogle = avatar
         };
         // 256 bits de entropía. El secreto se entrega una sola vez y SQL guarda solo SHA-256.
         var secreto = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -80,15 +100,24 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
 
         try
         {
+            usuario.SesionActivaId = credencial.CredencialDispositivoId;
+            var codigo = PrepararCodigoRecuperacion(usuario);
             unidad.TUsuario.Insertar(usuario);
             unidad.TCredencialDispositivo.Insertar(credencial);
             // Un solo SaveChanges inserta ambas entidades de forma atómica.
             unidad.Completar();
-            return Respuesta<TSesionJugador>.Ok(CrearSesion(usuario, credencial, secreto));
+            var sesion = CrearSesion(usuario, credencial, secreto);
+            sesion.CodigoRecuperacionNuevo = codigo;
+            return Respuesta<TSesionJugador>.Ok(sesion);
         }
         catch (Exception excepcion)
         {
             unidad.Rollback();
+            if (sub != null && unidad.TUsuario.ObtenerEntidad(u => u.GoogleSub == sub).Data != null)
+            {
+                // Otra instancia pudo registrar este Google antes del SaveChanges.
+                return IngresarGoogle(sub);
+            }
             // Otro proceso pudo ganar entre la consulta y el índice único de SQL.
             // Solo un nombre que ahora existe se traduce a 409; los demás fallos siguen siendo internos.
             var disponible = NombreDisponible(datos.NombreUsuario);
@@ -117,20 +146,69 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
         }
 
         var credencial = consulta.Data;
-        if (credencial == null || !SesionVigente(credencial.CredencialDispositivoId, credencial.UsuarioId))
+        if (!CredencialVigente(credencial))
         {
             return Respuesta<TSesionJugador>.Fail("La credencial venció, fue invalidada o no existe. No se puede recuperar este perfil.", "CredencialInvalida");
         }
 
-        // El uso válido prolonga la credencial sin cambiar el secreto guardado en el dispositivo.
-        // Solo cambia ExpiraEnUtc; una revocación concurrente no se sobrescribe.
+        using var exclusion = ExclusionSesiones.Tomar(credencial!.UsuarioId);
+        if (!CredencialSigueVigente(hash)) { return SesionInvalida(); }
+        var usuario = unidad.TUsuario.ObtenerEntidad(jugador => jugador.UsuarioId == credencial.UsuarioId && jugador.Activo).Data;
+        if (usuario == null) { return SesionInvalida(); }
+        var sesion = NuevaCredencial(usuario);
+        unidad.Completar();
+        return Respuesta<TSesionJugador>.Ok(sesion);
+    }
+
+    public Respuesta<TSesionJugador> Renovar(TRecuperarSesion datos)
+    {
+        if (datos.Credencial == null || datos.Credencial.Length != 64 || !datos.Credencial.All(Uri.IsHexDigit)) { return SesionInvalida(); }
+        var hash = CalcularHash(datos.Credencial);
+        var credencial = unidad.TCredencialDispositivo.ObtenerEntidad(c => c.HashCredencial == hash).Data;
+        if (!CredencialVigente(credencial)) { return SesionInvalida(); }
+        using var exclusion = ExclusionSesiones.Tomar(credencial!.UsuarioId);
+        if (!CredencialSigueVigente(hash)) { return SesionInvalida(); }
+        var usuario = unidad.TUsuario.ObtenerEntidad(u => u.UsuarioId == credencial.UsuarioId && u.Activo
+            && (u.SesionActivaId == credencial.CredencialDispositivoId || u.SesionActivaId == null)).Data;
+        if (usuario == null)
+        {
+            var error = ErrorSesion(credencial.CredencialDispositivoId, credencial.UsuarioId);
+            return Respuesta<TSesionJugador>.Fail("La sesion ya no esta activa. Ingresa nuevamente.", error ?? "CredencialInvalida");
+        }
+        if (usuario.SesionActivaId == null)
+        {
+            // No reactivar JWT antiguos cuyo sid era el identificador de la credencial anterior.
+            var migrada = NuevaCredencial(usuario);
+            unidad.Completar();
+            return Respuesta<TSesionJugador>.Ok(migrada);
+        }
         credencial.ExpiraEnUtc = DateTime.UtcNow.AddDays(365);
         unidad.Completar();
-        var usuario = unidad.TUsuario.ObtenerEntidad(jugador => jugador.UsuarioId == credencial.UsuarioId).Data!;
         return Respuesta<TSesionJugador>.Ok(CrearSesion(usuario, credencial, null));
     }
 
+    private static bool CredencialVigente(CredencialDispositivo? credencial)
+    {
+        return credencial != null && credencial.RevocadaEnUtc == null && credencial.ExpiraEnUtc > DateTime.UtcNow;
+    }
+
+    private bool CredencialSigueVigente(string hash)
+    {
+        var ahora = DateTime.UtcNow;
+        return unidad.TCredencialDispositivo.ObtenerEntidad(c => c.HashCredencial == hash && c.RevocadaEnUtc == null && c.ExpiraEnUtc > ahora).Data != null;
+    }
+
+    private static Respuesta<TSesionJugador> SesionInvalida()
+    {
+        return Respuesta<TSesionJugador>.Fail("Esta sesion ya no esta activa. Tu cuenta pudo iniciarse en otro dispositivo. Ingresa nuevamente para tomar el control.", "CredencialInvalida");
+    }
+
     public bool SesionVigente(Guid sesionId, int usuarioId)
+    {
+        return ErrorSesion(sesionId, usuarioId) == null;
+    }
+
+    public string? ErrorSesion(Guid sesionId, int usuarioId)
     {
         var ahora = DateTime.UtcNow;
         var consulta = unidad.TCredencialDispositivo.ObtenerEntidad(credencial =>
@@ -143,17 +221,26 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
             throw new InvalidOperationException("No se pudo validar la sesión.");
         }
 
-        var usuario = unidad.TUsuario.ObtenerEntidad(jugador => jugador.UsuarioId == usuarioId);
+        var usuario = unidad.TUsuario.ObtenerEntidad(jugador => jugador.UsuarioId == usuarioId && jugador.Activo && jugador.SesionActivaId == sesionId);
         if (!usuario.Success)
         {
             throw new InvalidOperationException("No se pudo validar el perfil.");
         }
 
-        return consulta.Data != null && usuario.Data?.Activo == true;
+        if (consulta.Data != null && usuario.Data != null) { return null; }
+        if (consulta.Data == null) { return "SesionInvalida"; }
+        // Consultar el motivo solo al fallar, con predicado SQL que evita una entidad rastreada desactualizada.
+        var reemplazada = unidad.TUsuario.ObtenerEntidad(jugador => jugador.UsuarioId == usuarioId && jugador.Activo
+            && jugador.SesionActivaId != null && jugador.SesionActivaId != Guid.Empty && jugador.SesionActivaId != sesionId);
+        if (!reemplazada.Success) { throw new InvalidOperationException("No se pudo validar el perfil."); }
+        return reemplazada.Data != null ? "SesionReemplazada" : "SesionInvalida";
     }
 
     public void Revocar(Guid sesionId, int usuarioId)
     {
+        using var exclusion = ExclusionSesiones.Tomar(usuarioId);
+        var usuario = unidad.TUsuario.ObtenerEntidad(u => u.UsuarioId == usuarioId && u.SesionActivaId == sesionId).Data;
+        if (usuario == null) { return; }
         var consulta = unidad.TCredencialDispositivo.ObtenerEntidad(credencial =>
             credencial.CredencialDispositivoId == sesionId && credencial.UsuarioId == usuarioId);
         if (!consulta.Success || consulta.Data == null)
@@ -162,11 +249,19 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
         }
 
         consulta.Data.RevocadaEnUtc = DateTime.UtcNow;
+        usuario.SesionActivaId = Guid.Empty;
         unidad.Completar();
     }
 
-    public Respuesta<TUsuario> VincularGoogle(int usuarioId, string sub, string? avatar)
+    public Respuesta<TUsuario> VincularGoogle(int usuarioId, string sub, string? avatar, Guid? sesionEsperada = null)
     {
+        lock (CerrojoIdentidades) { return VincularGoogleInterno(usuarioId, sub, avatar, sesionEsperada); }
+    }
+
+    private Respuesta<TUsuario> VincularGoogleInterno(int usuarioId, string sub, string? avatar, Guid? sesionEsperada)
+    {
+        using var exclusion = ExclusionSesiones.Tomar(usuarioId);
+        if (sesionEsperada.HasValue && !SesionVigente(sesionEsperada.Value, usuarioId)) { return Respuesta<TUsuario>.Fail("La sesion ya no esta activa.", "CredencialInvalida"); }
         var usuario = unidad.TUsuario.ObtenerEntidad(u => u.UsuarioId == usuarioId && u.Activo).Data;
         if (usuario == null)
         {
@@ -214,34 +309,36 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
             return Respuesta<TSesionJugador>.Fail("Google aún no está vinculado. Creá o recuperá tu jugador invitado y vinculalo desde Perfil.", "GoogleSinVincular");
         }
 
+        using var exclusion = ExclusionSesiones.Tomar(usuario.UsuarioId);
         var sesion = NuevaCredencial(usuario);
         unidad.Completar();
         return Respuesta<TSesionJugador>.Ok(sesion);
     }
 
-    public Respuesta<string> GenerarRecuperacion(int usuarioId)
+    public Respuesta<string> GenerarRecuperacion(int usuarioId, Guid? sesionEsperada = null)
     {
+        using var exclusion = ExclusionSesiones.Tomar(usuarioId);
+        if (sesionEsperada.HasValue && !SesionVigente(sesionEsperada.Value, usuarioId)) { return Respuesta<string>.Fail("La sesion ya no esta activa.", "CredencialInvalida"); }
         var usuario = unidad.TUsuario.ObtenerEntidad(u => u.UsuarioId == usuarioId && u.Activo).Data;
         if (usuario == null)
         {
             return Respuesta<string>.Fail("El jugador no está disponible.");
         }
 
-        var codigo = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        usuario.HashRecuperacion = CalcularHash(codigo);
-        usuario.RecuperacionExpiraEnUtc = DateTime.UtcNow.AddDays(365);
+        var codigo = PrepararCodigoRecuperacion(usuario);
         unidad.Completar();
         return Respuesta<string>.Ok(codigo);
     }
 
     public Respuesta<TSesionJugador> RecuperarConCodigo(string codigo)
     {
-        if (codigo.Length != 64 || !codigo.All(Uri.IsHexDigit))
+        var normalizado = CodigosRecuperacion.Normalizar(codigo);
+        if (normalizado == null)
         {
             return Respuesta<TSesionJugador>.Fail("Código de recuperación inválido.", "CredencialInvalida");
         }
 
-        var hash = CalcularHash(codigo.ToUpperInvariant());
+        var hash = normalizado.Length == 64 ? CalcularHash(normalizado) : protectorCodigos.CalcularHash(normalizado);
         var ahora = DateTime.UtcNow;
         var usuario = unidad.TUsuario.ObtenerEntidad(u => u.HashRecuperacion == hash && u.Activo && u.RecuperacionExpiraEnUtc > ahora).Data;
         if (usuario == null)
@@ -249,10 +346,14 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
             return Respuesta<TSesionJugador>.Fail("El código venció, ya se utilizó o no existe.", "CredencialInvalida");
         }
 
-        usuario.HashRecuperacion = null;
-        usuario.RecuperacionExpiraEnUtc = null;
+        using var exclusion = ExclusionSesiones.Tomar(usuario.UsuarioId);
+        usuario = unidad.TUsuario.ObtenerEntidad(u => u.HashRecuperacion == hash && u.Activo && u.RecuperacionExpiraEnUtc > ahora).Data;
+        if (usuario == null) { return SesionInvalida(); }
+        var nuevoCodigo = PrepararCodigoRecuperacion(usuario, pendiente: true);
         var sesion = NuevaCredencial(usuario);
-        // El hash es un token de concurrencia: solo una solicitud puede consumirlo.
+        sesion.CodigoRecuperacionNuevo = nuevoCodigo;
+        sesion.CodigoRecuperacionPorConfirmar = true;
+        // El anterior permanece utilizable si esta respuesta se pierde.
         unidad.Completar();
         return Respuesta<TSesionJugador>.Ok(sesion);
     }
@@ -270,7 +371,51 @@ public class AccesoUsuarioLJ : IAccesoUsuarioLJ
             ExpiraEnUtc = DateTime.UtcNow.AddDays(365)
         };
         unidad.TCredencialDispositivo.Insertar(credencial);
+        usuario.SesionActivaId = credencial.CredencialDispositivoId;
         return CrearSesion(usuario, credencial, secreto);
+    }
+
+    public Respuesta<bool> ConfirmarRecuperacion(int usuarioId, Guid sesionId, string codigo)
+    {
+        using var exclusion = ExclusionSesiones.Tomar(usuarioId);
+        if (!SesionVigente(sesionId, usuarioId)) { return Respuesta<bool>.Fail("La sesion ya no esta activa.", "CredencialInvalida"); }
+        var normalizado = CodigosRecuperacion.Normalizar(codigo);
+        if (normalizado?.Length != 12) { return Respuesta<bool>.Fail("Codigo pendiente invalido."); }
+        var hash = protectorCodigos.CalcularHash(normalizado);
+        var usuario = unidad.TUsuario.ObtenerEntidad(u => u.UsuarioId == usuarioId && u.Activo).Data!;
+        if (usuario.HashRecuperacionPendiente == null && HashIgual(usuario.HashRecuperacion, hash)) { return Respuesta<bool>.Ok(true); }
+        if (!HashIgual(usuario.HashRecuperacionPendiente, hash)) { return Respuesta<bool>.Fail("Este codigo fue reemplazado. Genera otro desde tu perfil."); }
+        usuario.HashRecuperacion = usuario.HashRecuperacionPendiente;
+        usuario.HashRecuperacionPendiente = null;
+        usuario.RecuperacionExpiraEnUtc = DateTime.UtcNow.AddDays(365);
+        unidad.Completar();
+        return Respuesta<bool>.Ok(true);
+    }
+
+    private static bool HashIgual(string? esperado, string actual)
+    {
+        return esperado != null && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(esperado), Encoding.ASCII.GetBytes(actual));
+    }
+
+    private string PrepararCodigoRecuperacion(Usuario usuario, bool pendiente = false)
+    {
+        for (var intento = 0; intento < 5; intento++)
+        {
+            var codigo = CodigosRecuperacion.Crear();
+            var hash = protectorCodigos.CalcularHash(CodigosRecuperacion.Normalizar(codigo)!);
+            var consulta = unidad.TUsuario.ObtenerEntidad(u => u.HashRecuperacion == hash || u.HashRecuperacionPendiente == hash);
+            if (!consulta.Success) { throw new InvalidOperationException("No se pudo preparar un codigo seguro."); }
+            if (consulta.Data != null) { continue; }
+            if (pendiente) { usuario.HashRecuperacionPendiente = hash; }
+            else
+            {
+                usuario.HashRecuperacion = hash;
+                usuario.HashRecuperacionPendiente = null;
+                usuario.RecuperacionExpiraEnUtc = DateTime.UtcNow.AddDays(365);
+            }
+            return codigo;
+        }
+        throw new InvalidOperationException("No se pudo generar un codigo unico. Reintenta.");
     }
 
     private TSesionJugador CrearSesion(Usuario usuario, CredencialDispositivo credencial, string? secreto)

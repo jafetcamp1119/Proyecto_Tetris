@@ -18,10 +18,12 @@ public partial class Usuario
     public DateTime FechaRegistro { get; set; }
 
     public bool Activo { get; set; }
+    public Guid? SesionActivaId { get; set; }
 
     public string? GoogleSub { get; set; }
     public string? AvatarGoogle { get; set; }
     public string? HashRecuperacion { get; set; }
+    public string? HashRecuperacionPendiente { get; set; }
     public DateTime? RecuperacionExpiraEnUtc { get; set; }
 
     public virtual ICollection<BloquesTablero> BloquesTableros { get; set; } = new List<BloquesTablero>();

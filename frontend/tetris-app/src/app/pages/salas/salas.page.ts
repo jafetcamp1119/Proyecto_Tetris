@@ -1,5 +1,5 @@
 import { mensajeParaJugador } from '../../servicios/mensajes-jugador';
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular';
@@ -8,14 +8,15 @@ import { SalasServicio } from '../../servicios/salas.servicio';
 import { AutenticacionServicio } from '../../servicios/autenticacion.servicio';
 import { ConfiguracionSalaComponent, configuracionInicial, validarConfiguracion } from '../../componentes/configuracion-sala.component';
 import { nombreModo } from '../../modelos/presentacion-juego';
+import { CodigoSalaComponent } from '../../componentes/codigo-sala.component';
 import { combineLatest, Subscription } from 'rxjs';
 
 @Component({
     standalone: true,
-    imports: [FormsModule, RouterLink, IonContent, ConfiguracionSalaComponent],
+    imports: [FormsModule, RouterLink, IonContent, ConfiguracionSalaComponent, CodigoSalaComponent],
     templateUrl: './salas.page.html'
 })
-export class SalasPage {
+export class SalasPage implements OnInit, OnDestroy {
     private readonly salas = inject(SalasServicio);
     private readonly acceso = inject(AutenticacionServicio);
     private readonly ruta = inject(ActivatedRoute);

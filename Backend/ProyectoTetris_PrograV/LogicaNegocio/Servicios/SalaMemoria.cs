@@ -18,6 +18,7 @@ internal sealed class JugadorSala
     public readonly HashSet<string> Conexiones = [];
     public DateTime? Desconexion;
     public TableroJuego? Tablero;
+    public PiezaPreparada? SiguientePieza;
     public DateTime UltimaCaida;
     public readonly List<Dominio.EntidadesTipadas.TEfectoTemporal> Efectos = [];
 
@@ -55,9 +56,9 @@ internal sealed class SalaMemoria
     public long SecuenciaEspecial;
     public Dominio.EntidadesTipadas.TActivacionEspecial? UltimoEfecto;
 
-    // Privacidad: una sala privada se identifica con un código de seis caracteres generado por el servidor.
+    // Solo multijugador recibe código; la privacidad determina su aparición en el listado.
     public bool Privada;
-    public string? CodigoPrivado;
+    public string? CodigoIngreso;
 
     public ConfiguracionPiezas Piezas = ConfiguracionPiezas.SoloNormales;
     public PausaPartida Pausa;

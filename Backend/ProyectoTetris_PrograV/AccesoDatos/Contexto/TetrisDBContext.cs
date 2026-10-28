@@ -416,10 +416,13 @@ public partial class TetrisDBContext : DbContext
 
         modelBuilder.Entity<Usuario>(entity =>
         {
+            entity.Property(e => e.SesionActivaId).IsConcurrencyToken();
             entity.Property(e => e.GoogleSub).HasMaxLength(255).IsUnicode(false).IsConcurrencyToken();
             entity.HasIndex(e => e.GoogleSub).IsUnique().HasFilter("[GoogleSub] IS NOT NULL");
             entity.Property(e => e.AvatarGoogle).HasMaxLength(2048);
             entity.Property(e => e.HashRecuperacion).HasMaxLength(64).IsUnicode(false).IsConcurrencyToken();
+            entity.Property(e => e.HashRecuperacionPendiente).HasMaxLength(64).IsUnicode(false).IsConcurrencyToken();
+            entity.HasIndex(e => e.HashRecuperacionPendiente).IsUnique().HasFilter("[HashRecuperacionPendiente] IS NOT NULL");
             entity.HasIndex(e => e.HashRecuperacion).IsUnique().HasFilter("[HashRecuperacion] IS NOT NULL");
             entity.HasKey(e => e.UsuarioId).HasName("PK__Usuarios__2B3DE7B88839D6AF");
 

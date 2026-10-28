@@ -64,6 +64,11 @@ if (args.Contains("--integracion-sql"))
     return await PruebasSql.EjecutarAsync();
 }
 
+if (args.Contains("--conexion-publicada"))
+{
+    return await PruebasConexionPublicada.EjecutarAsync();
+}
+
 if (args.Contains("--integracion-http"))
 {
     return await PruebasHttp.EjecutarAsync();
@@ -302,7 +307,7 @@ Prueba("Las revisiones de guardado no ocultan derrotas posteriores", () =>
 Prueba("Registro con nickname, normalización y credencial privada", () =>
 {
     var unidad = new UnidadMemoria();
-    var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance);
+    var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
     var registro = acceso.Registrar(new TRegistroUsuario { NombreUsuario = " Ana " });
     Verificar(registro.Success && registro.Data!.Usuario.NombreUsuario == "Ana");
     Verificar(unidad.Usuarios.Datos[0].Correo == null && unidad.Usuarios.Datos[0].PasswordHash == null);
@@ -316,13 +321,14 @@ Prueba("Registro con nickname, normalización y credencial privada", () =>
     Verificar(guardada.HashCredencial != credencial);
     var recuperada = acceso.Recuperar(new TRecuperarSesion { Credencial = credencial });
     Verificar(recuperada.Success && recuperada.Data!.Usuario.UsuarioId == registro.Data.Usuario.UsuarioId);
-    Verificar(recuperada.Data!.Credencial == null);
+    Verificar(recuperada.Data!.Credencial != null && recuperada.Data.SesionId != registro.Data.SesionId);
+    Verificar(!acceso.SesionVigente(registro.Data.SesionId, registro.Data.Usuario.UsuarioId));
     Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = new string('0', 64) }).Success);
     guardada.ExpiraEnUtc = DateTime.UtcNow.AddSeconds(-1);
     Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = credencial }).Success);
     guardada.ExpiraEnUtc = DateTime.UtcNow.AddDays(1);
-    acceso.Revocar(guardada.CredencialDispositivoId, guardada.UsuarioId);
-    Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = credencial }).Success);
+    acceso.Revocar(recuperada.Data.SesionId, registro.Data.Usuario.UsuarioId);
+    Verificar(!acceso.Recuperar(new TRecuperarSesion { Credencial = recuperada.Data.Credencial! }).Success);
 });
 Prueba("Coronas, rondas y resultados históricos independientes", () =>
 {
@@ -343,6 +349,7 @@ Prueba("Coronas, rondas y resultados históricos independientes", () =>
     salas.ConfirmarPersistencia(id, final.RevisionPersistencia);
     Verificar(!salas.NuevaRonda(id, 2).Success);
     var nueva = salas.NuevaRonda(id, 1).Data!;
+    Verificar(nueva.Codigo == final.Codigo);
     Verificar(nueva.NumeroRonda == 2 && nueva.Estado == EstadoSala.Esperando);
     Verificar(nueva.Jugadores.All(jugador => !jugador.Listo && !jugador.Perdido && !jugador.GanoRonda
         && jugador.Puntos == 0 && jugador.UltimaSecuencia == 0 && jugador.VictoriasSala == 1 && jugador.Corona));
@@ -398,6 +405,20 @@ Prueba("Resultados persisten al perder y las estadísticas se guardan una vez", 
     Verificar(unidad.Resultados.Datos.Count == 4 && unidad.Estadisticas.Datos.Count == 4);
     Verificar(unidad.Estadisticas.Datos.All(e => e.PartidasJugadas == 1));
     Verificar(unidad.Resultados.Datos.Single(r => r.UsuarioId == 1).EsGanador);
+});
+Prueba("Reutilizar un código corto no mezcla partidas históricas", () =>
+{
+    var unidad = new UnidadMemoria();
+    var registro = new RegistroPartidaLJ(unidad);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
+    salas.Iniciar(id, 1);
+    var original = salas.Obtener(id, 1).Data!;
+    registro.GuardarAsync(original).GetAwaiter().GetResult();
+    var otra = original with { Id = Guid.NewGuid() };
+    registro.GuardarAsync(otra).GetAwaiter().GetResult();
+    Verificar(original.Codigo == otra.Codigo);
+    Verificar(unidad.Partidas.Datos.Count == 2);
+    Verificar(unidad.Partidas.Datos.Select(partida => partida.CodigoSala).Distinct().Count() == 2);
 });
 Prueba("El código de invitación incorpora al participante", () =>
 {
@@ -463,10 +484,14 @@ Prueba("El cliente C# recupera la sesión y envía Bearer", () =>
 });
 PruebasDefinitivas.Agregar(Prueba);
 PruebasCapacidadSalas.Agregar(Prueba);
+PruebasSiguientePieza.Agregar(Prueba);
 PruebasReglasNuevas.Agregar(Prueba);
 PruebasConfiguracionPartida.Agregar(Prueba);
 PruebasEfectosEspeciales.Agregar(Prueba);
 PruebasCuentasGoogle.Agregar(Prueba, mapper);
+PruebasSeguridadFinal.Agregar(Prueba, mapper);
+PruebasRegistroGoogle.Agregar(Prueba, mapper);
+PruebasNivelGlobal.Agregar(Prueba);
 var fallos = 0;
 foreach (var prueba in pruebas)
 {

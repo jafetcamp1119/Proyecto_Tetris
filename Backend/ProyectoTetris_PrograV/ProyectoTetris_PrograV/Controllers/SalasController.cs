@@ -29,6 +29,7 @@ public class SalasController : ControllerBase
     }
 
     [HttpPost]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("CrearSala")]
     public IActionResult Crear(TCrearSala datos)
     {
         return Responder(salas.Crear(UsuarioId, User.Identity!.Name!, datos));
@@ -58,6 +59,14 @@ public class SalasController : ControllerBase
         }
 
         return Ok(respuesta);
+    }
+
+    [HttpGet("{id:guid}/siguiente-pieza")]
+    public IActionResult SiguientePieza(Guid id)
+    {
+        // La identidad sale del JWT; no hay un parámetro para consultar a otro jugador.
+        var respuesta = salas.ObtenerSiguientePieza(id, UsuarioId);
+        return respuesta.Success ? Ok(respuesta) : BadRequest(respuesta);
     }
 
     [HttpPut("{id:guid}/piezas-especiales")]

@@ -23,8 +23,10 @@
         <h2>Todo encaja.<br>Tu próxima partida también.</h2>
 
         <p>
-          Construye tu estrategia, supera tus límites
-          y comparte la emoción de cada jugada.
+          Proyecto Tetris es un videojuego académico de piezas que caen: movelas y giralas
+          para completar líneas y sumar puntos. Jugá en Individual, Compartido
+          o Competitivo. Podés comenzar con un nickname y vincular Google
+          de forma opcional para recuperar tu jugador.
         </p>
 
         <div class="modos">
@@ -41,6 +43,16 @@
 
         <span class="bienvenida">QUÉ BUENO TENERTE AQUÍ</span>
         <h2 id="titulo-login">Bienvenido a Tetris</h2>
+
+        @if (acceso.motivoCierre()) {
+          <section class="aviso-sesion" role="status" aria-labelledby="titulo-sesion-cerrada">
+            <h3 id="titulo-sesion-cerrada">Sesión cerrada</h3>
+            <p>{{ acceso.mensajeSesion() }}</p>
+            @if (acceso.motivoCierre() === 'SesionReemplazada') {
+              <p>Si no fuiste vos, te recomendamos recuperar tu cuenta.</p>
+            }
+          </section>
+        }
 
         <p class="descripcion">
           Ingresa tu nombre de usuario para comenzar a jugar.
@@ -91,6 +103,8 @@
           <input id="codigo" type="password" [(ngModel)]="codigoRecuperacion" autocomplete="off">
           <button class="accion" type="button" [disabled]="cargando || !codigoRecuperacion" (click)="recuperar()">Recuperar jugador</button>
         </details>
+
+        <p class="enlace-privacidad"><a href="privacidad/index.html">Política de privacidad</a></p>
 
         <div class="pie-tarjeta">
           <span aria-hidden="true">■</span>

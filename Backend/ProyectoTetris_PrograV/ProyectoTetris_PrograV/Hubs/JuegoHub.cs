@@ -13,11 +13,13 @@ public class JuegoHub : Hub
 {
     private readonly ISalaLJ salas;
     private readonly PublicadorSalas publicador;
+    private readonly Seguridad.ConexionesSesion conexiones;
 
-    public JuegoHub(ISalaLJ salas, PublicadorSalas publicador)
+    public JuegoHub(ISalaLJ salas, PublicadorSalas publicador, Seguridad.ConexionesSesion conexiones)
     {
         this.salas = salas;
         this.publicador = publicador;
+        this.conexiones = conexiones;
     }
 
     private int UsuarioId
@@ -33,7 +35,9 @@ public class JuegoHub : Hub
         var respuesta = salas.Conectar(salaId, UsuarioId, Context.ConnectionId);
         if (respuesta.Success)
         {
+            conexiones.RegistrarSala(Context.ConnectionId, salaId);
             await Groups.AddToGroupAsync(Context.ConnectionId, salaId.ToString());
+            await Groups.AddToGroupAsync(Context.ConnectionId, PublicadorSalas.GrupoPrivado(salaId, UsuarioId));
             await publicador.PublicarEstadoAsync(respuesta.Data!);
         }
 
@@ -83,12 +87,19 @@ public class JuegoHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        conexiones.Retirar(Context.ConnectionId);
         foreach (var estado in salas.Desconectar(Context.ConnectionId))
         {
             await publicador.PublicarEstadoAsync(estado);
         }
 
         await base.OnDisconnectedAsync(exception);
+    }
+
+    public override Task OnConnectedAsync()
+    {
+        conexiones.Registrar(Context);
+        return base.OnConnectedAsync();
     }
 
     private async Task PublicarSiCorresponde(Respuesta<TSala> respuesta)

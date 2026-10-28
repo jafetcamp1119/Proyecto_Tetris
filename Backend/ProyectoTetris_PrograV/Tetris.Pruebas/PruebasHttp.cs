@@ -35,7 +35,7 @@ using ProyectoTetris_PrograV.Seguridad;
 using ProyectoTetris_PrograV.Servicios;
 using Utilitarios;
 
-internal static class PruebasHttp
+internal static partial class PruebasHttp
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -66,6 +66,7 @@ internal static class PruebasHttp
         });
 
         constructor.Services.AgregarApiTetris();
+        constructor.Services.AddSingleton<IValidadorGoogle, ValidadorGooglePrueba>();
         constructor.Services.AgregarSeguridad(constructor.Configuration, constructor.Environment);
         constructor.Services.AddAutoMapper(configuracion => { }, typeof(AutoMapperProfile).Assembly);
         constructor.Services.AddSingleton<IUnidadTrabajoEF>(new UnidadMemoria());
@@ -87,6 +88,12 @@ internal static class PruebasHttp
         constructor.Services.AddSingleton<PublicadorSalas>();
 
         await using var aplicacion = constructor.Build();
+        // Aislar cuotas entre escenarios en este servidor de pruebas, nunca en produccion.
+        aplicacion.Use(async (contexto, siguiente) =>
+        {
+            if (IPAddress.TryParse(contexto.Request.Headers["X-IP-Prueba"], out var ip)) { contexto.Connection.RemoteIpAddress = ip; }
+            await siguiente();
+        });
         aplicacion.UseCors(ConfiguracionSeguridad.PoliticaCors);
         aplicacion.UseAuthentication();
         aplicacion.UseAuthorization();
@@ -217,11 +224,11 @@ internal static class PruebasHttp
             using var duplicado = await cliente.PostAsJsonAsync("/api/usuarios/registrar",
                 new TRegistroUsuario { NombreUsuario = " ionicPRUEBA1 " });
             Verificar(duplicado.StatusCode == HttpStatusCode.Conflict, "nickname ocupado devuelve 409 con mayúsculas y espacios");
-            using var recuperacion = await cliente.PostAsJsonAsync("/api/usuarios/recuperar",
+            using var recuperacion = await cliente.PostAsJsonAsync("/api/usuarios/renovar",
                 new TRecuperarSesion { Credencial = sesiones[0].Credencial! });
             var sesionRecuperada = await recuperacion.Content.ReadFromJsonAsync<Respuesta<TAutenticacion>>(Json);
             Verificar(recuperacion.IsSuccessStatusCode && sesionRecuperada!.Data!.UsuarioId == sesiones[0].UsuarioId
-                && sesionRecuperada.Data.Credencial == null, "otro inicio reconoce al dispositivo sin publicar el secreto");
+                && sesionRecuperada.Data.Credencial == null, "restaurar el mismo dispositivo conserva su sesion sin publicar el secreto");
             using var renovacion = await cliente.PostAsJsonAsync("/api/usuarios/renovar",
                 new TRecuperarSesion { Credencial = sesiones[0].Credencial! });
             Verificar(renovacion.IsSuccessStatusCode, "sesión renovable sin JWT");
@@ -362,10 +369,37 @@ internal static class PruebasHttp
                         var empezada = (await comenzar.Content.ReadFromJsonAsync<Respuesta<TSala>>(Json))!.Data!;
                         Verificar(comenzar.IsSuccessStatusCode && empezada.Estado == EstadoSala.EnCurso,
                             $"{modo}/{capacidad}: inicia con todos conectados y listos");
+                        UsarSesion(1);
+                        using var consultarPrivada = await cliente.GetAsync($"/api/salas/{nuevaSala.Id}/siguiente-pieza?usuarioId={sesiones[0].UsuarioId}");
+                        var privadaJugador = (await consultarPrivada.Content.ReadFromJsonAsync<Respuesta<TVistaPreviaPrivada>>(Json))!.Data!;
+                        Verificar(consultarPrivada.IsSuccessStatusCode && privadaJugador.UsuarioId == sesiones[1].UsuarioId && privadaJugador.Pieza != null,
+                            "HTTP obtiene solamente la reserva del JWT e ignora una identidad ajena en query");
+                        var anunciada = privadaJugador.Pieza!;
+                        var estadoPublico = await cliente.GetStringAsync($"/api/salas/{nuevaSala.Id}");
+                        Verificar(!estadoPublico.Contains("siguientePieza") && !estadoPublico.Contains("vistaPrevia") && !estadoPublico.Contains("piezaPreparada"),
+                            "el estado público REST no contiene reservas");
+                        for (var indice = 0; indice < capacidad; indice++)
+                        {
+                            await participantes[indice].InvocarAsync("Entrar", nuevaSala.Id);
+                            Verificar(participantes[indice].VistasPrevias.Any(vista => vista.Pieza != null)
+                                && participantes[indice].VistasPrevias.All(vista => vista.UsuarioId == sesiones[indice].UsuarioId && vista.SalaId == nuevaSala.Id),
+                                $"{modo}/{capacidad}: WebSocket {indice + 1} recibe únicamente su vista privada");
+                        }
+                        UsarSesion(capacidad);
+                        using var reservaAjena = await cliente.GetAsync($"/api/salas/{nuevaSala.Id}/siguiente-pieza");
+                        Verificar(reservaAjena.StatusCode == HttpStatusCode.BadRequest, "un jugador fuera de la sala no consulta reservas");
+                        UsarSesion(0);
                         var movimientoCapacidad = await participantes[0].InvocarAsync("Mover", nuevaSala.Id,
-                            new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
+                            new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
                         Verificar(movimientoCapacidad.Success && movimientoCapacidad.Data!.Tableros.Length == (modo == ModoJuego.Compartido ? 1 : capacidad),
                             $"{modo}/{capacidad}: movimiento y tableros por SignalR");
+                        if (modo == ModoJuego.Compartido)
+                        {
+                            Verificar(movimientoCapacidad.Data!.UsuarioTurno == sesiones[1].UsuarioId
+                                && movimientoCapacidad.Data.Tableros[0].TipoPieza == anunciada.TipoPieza
+                                && movimientoCapacidad.Data.Tableros[0].PiezaEspecial == anunciada.PiezaEspecial,
+                                "el siguiente turno recibe la pieza anunciada, incluida su especial");
+                        }
                         using var abandonar = await cliente.PostAsync($"/api/salas/{nuevaSala.Id}/abandonar", null);
                         Verificar(abandonar.IsSuccessStatusCode, "cerrar sala de prueba de capacidad");
                     }
@@ -581,6 +615,10 @@ internal static class PruebasHttp
             var sinEntrar = await intrusa.InvocarAsync("Mover", clasica.Id,
                 new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
             Verificar(!sinEntrar.Success, "una conexión que no entró no puede mover");
+            var rafaga = await reconectada.MoverEnRafagaAsync(clasica.Id);
+            Verificar(rafaga.Length == 8 && rafaga.All(respuesta => respuesta.Success)
+                && rafaga[^1].Data!.Jugadores[0].UltimaSecuencia == 8,
+                "ocho movimientos en vuelo conservan orden y autoridad por WebSocket real");
 
             UsarSesion(1);
             using var salida = await cliente.PostAsync("/api/salas/" + clasica.Id + "/abandonar", null);
@@ -647,6 +685,8 @@ internal static class PruebasHttp
                 && nuevaRonda.Data.Jugadores[0].Corona && !nuevaRonda.Data.Jugadores[0].GanoRonda,
                 "HTTP distingue corona de sala y victoria de la ronda reiniciada");
 
+            await VerificarTransferenciasAsync(cliente.BaseAddress!, Verificar);
+            await VerificarRegistroGoogleAsync(cliente.BaseAddress!, Verificar);
             var conexionRevocable = await HubPrueba.ConectarAsync(cliente, direccion, sesiones[0].Token);
             conexiones.Add(conexionRevocable);
             await conexionRevocable.InvocarAsync("Entrar", salaRondas.Id);
@@ -673,6 +713,7 @@ internal static class PruebasHttp
             Verificar(loginAnterior.StatusCode == HttpStatusCode.NotFound, "login tradicional retirado");
 
             Console.WriteLine(verificaciones + " comprobaciones HTTP/SignalR correctas, sin modificar SQL.");
+            MedicionesRendimiento.Imprimir();
             return 0;
         }
         catch (Exception excepcion)
@@ -831,7 +872,9 @@ internal static class PruebasHttp
 
         public PasoJuego Mover(TableroJuego tablero, Movimiento movimiento)
         {
-            return motor.Mover(tablero, movimiento);
+            var inicio = System.Diagnostics.Stopwatch.GetTimestamp();
+            try { return motor.Mover(tablero, movimiento); }
+            finally { MedicionesRendimiento.Registrar("motor_movimiento_ms", inicio); }
         }
 
         public PasoJuego Avanzar(TableroJuego tablero)
@@ -852,8 +895,20 @@ internal static class PruebasHttp
         private readonly StringBuilder _pendiente = new();
         private int _secuencia;
         public List<TSala> Estados { get; } = new();
+        public List<TVistaPreviaPrivada> VistasPrevias { get; } = new();
         public List<(string Nombre, JsonElement Datos)> EventosSala { get; } = new();
         public List<(string Nombre, TPausa Datos)> Eventos { get; } = new();
+        public List<JsonElement> EventosSesion { get; } = new();
+
+        public async Task<JsonElement> EsperarCierreSesionAsync()
+        {
+            while (EventosSesion.Count == 0)
+            {
+                using var mensaje = JsonDocument.Parse(await LeerAsync());
+                if (mensaje.RootElement.GetProperty("type").GetInt32() == 1) { GuardarMensajeDelServidor(mensaje.RootElement); }
+            }
+            return EventosSesion[0];
+        }
 
         public static async Task<HubPrueba> ConectarAsync(HttpClient http, Uri baseUrl, string token)
         {
@@ -936,6 +991,7 @@ internal static class PruebasHttp
 
         public async Task<Respuesta<TSala>> InvocarAsync(string metodo, params object[] argumentos)
         {
+            var inicio = System.Diagnostics.Stopwatch.GetTimestamp();
             var invocacion = (++_secuencia).ToString();
             await EnviarAsync(new { type = 1, invocationId = invocacion, target = metodo, arguments = argumentos });
 
@@ -957,9 +1013,38 @@ internal static class PruebasHttp
                         throw new InvalidOperationException("Falló la invocación del hub: " + metodo);
                     }
 
+                    if (metodo == "Mover") { MedicionesRendimiento.Registrar("signalr_movimiento_local_ms", inicio); }
                     return mensaje.GetProperty("result").Deserialize<Respuesta<TSala>>(Json)!;
                 }
             }
+        }
+
+        public async Task<Respuesta<TSala>[]> MoverEnRafagaAsync(Guid salaId)
+        {
+            var pendientes = new HashSet<string>();
+            var inicio = System.Diagnostics.Stopwatch.GetTimestamp();
+            for (var indice = 1; indice <= 8; indice++)
+            {
+                var invocacion = (++_secuencia).ToString();
+                pendientes.Add(invocacion);
+                var movimiento = indice % 2 == 0 ? Movimiento.Derecha : Movimiento.Izquierda;
+                await EnviarAsync(new { type = 1, invocationId = invocacion, target = "Mover",
+                    arguments = new object[] { salaId, new TMovimiento { Movimiento = movimiento, Secuencia = indice } } });
+            }
+            var respuestas = new List<Respuesta<TSala>>();
+            while (pendientes.Count > 0)
+            {
+                using var documento = JsonDocument.Parse(await LeerAsync());
+                var mensaje = documento.RootElement;
+                var tipo = mensaje.GetProperty("type").GetInt32();
+                if (tipo == 1) { GuardarMensajeDelServidor(mensaje); }
+                if (tipo == 3 && pendientes.Remove(mensaje.GetProperty("invocationId").GetString()!))
+                {
+                    respuestas.Add(mensaje.GetProperty("result").Deserialize<Respuesta<TSala>>(Json)!);
+                }
+            }
+            MedicionesRendimiento.Registrar("rafaga_ocho_websocket_ms", inicio);
+            return respuestas.ToArray();
         }
 
         private void GuardarMensajeDelServidor(JsonElement mensaje)
@@ -967,9 +1052,21 @@ internal static class PruebasHttp
             var nombre = mensaje.GetProperty("target").GetString()!;
             var argumento = mensaje.GetProperty("arguments")[0];
 
+            if (nombre is "SesionReemplazada" or "SesionTerminada")
+            {
+                EventosSesion.Add(argumento.Clone());
+                return;
+            }
+
             if (nombre == "EstadoActualizado")
             {
                 Estados.Add(argumento.Deserialize<TSala>(Json)!);
+                return;
+            }
+
+            if (nombre == "VistaPreviaActualizada")
+            {
+                VistasPrevias.Add(argumento.Deserialize<TVistaPreviaPrivada>(Json)!);
                 return;
             }
 
