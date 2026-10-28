@@ -18,17 +18,15 @@ ion-content {
   isolation: isolate;
   background:
     radial-gradient(ellipse at 10% 30%, #7040ff20, transparent 55%),
-    radial-gradient(ellipse at 95% 85%, #23d4df14, transparent 50%),
-    #090e1c;
+    radial-gradient(ellipse at 95% 85%, #23d4df14, transparent 50%), #090e1c;
 
   &::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     z-index: -2;
     background-image:
-      linear-gradient(#ffffff05 1px, transparent 1px),
-      linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+      linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px);
     background-size: 38px 38px;
     pointer-events: none;
   }
@@ -55,18 +53,30 @@ ion-content {
 h1 {
   display: flex;
   margin: 24px 0;
-  font-family: "Arial Black", Arial, sans-serif;
+  font-family: 'Arial Black', Arial, sans-serif;
   font-size: clamp(60px, 7.5vw, 100px);
   font-weight: 900;
   line-height: 1.1;
   letter-spacing: -5px;
 
-  span:nth-child(1) { color: #52e2ec; }
-  span:nth-child(2) { color: #b08cff; }
-  span:nth-child(3) { color: #ff85b8; }
-  span:nth-child(4) { color: #ffba77; }
-  span:nth-child(5) { color: #ffe184; }
-  span:nth-child(6) { color: #82e6b6; }
+  span:nth-child(1) {
+    color: #52e2ec;
+  }
+  span:nth-child(2) {
+    color: #b08cff;
+  }
+  span:nth-child(3) {
+    color: #ff85b8;
+  }
+  span:nth-child(4) {
+    color: #ffba77;
+  }
+  span:nth-child(5) {
+    color: #ffe184;
+  }
+  span:nth-child(6) {
+    color: #82e6b6;
+  }
 }
 
 .presentacion h2 {
@@ -181,7 +191,9 @@ input {
   color: #f4f6ff;
   font: inherit;
   font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 
   &::placeholder {
     color: #8390ad;
@@ -401,4 +413,3 @@ button {
     padding: 28px 24px;
   }
 }
-

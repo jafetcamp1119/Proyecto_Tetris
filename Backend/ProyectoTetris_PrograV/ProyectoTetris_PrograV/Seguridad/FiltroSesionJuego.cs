@@ -1,6 +1,9 @@
 using System.Security.Claims;
+
 using Dominio.InterfazLJ;
+
 using Microsoft.AspNetCore.SignalR;
+
 using Utilitarios;
 
 namespace ProyectoTetris_PrograV.Seguridad;
@@ -19,6 +22,8 @@ public class FiltroSesionJuego : IHubFilter
         mediciones = registros.CreateLogger("TetrisRendimiento");
     }
 
+    // Comprueba cuota, vencimiento y sesión en cada acción del hub.
+    // Mantiene el bloqueo por usuario hasta terminar la acción para evitar carreras con otro ingreso.
     public async ValueTask<object?> InvokeMethodAsync(
         HubInvocationContext contexto,
         Func<HubInvocationContext, ValueTask<object?>> siguiente)
@@ -30,28 +35,50 @@ public class FiltroSesionJuego : IHubFilter
         var identidad = contexto.Context.User;
         var usuarioValido = int.TryParse(identidad?.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
         var sesionValida = Guid.TryParse(identidad?.FindFirstValue("sid"), out var sesionId);
-        if (!conexiones.PermitirAccion(usuarioId)) { throw new HubException("Demasiadas acciones. Espera un momento."); }
+
+        if (!conexiones.PermitirAccion(usuarioId))
+        {
+            throw new HubException("Demasiadas acciones. Espera un momento.");
+        }
+
         using var exclusion = await ExclusionSesiones.TomarAsync(usuarioId, contexto.Context.ConnectionAborted);
-        var fechaValida = long.TryParse(identidad?.FindFirstValue("exp"), out var expira) && expira > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var error = usuarioValido && sesionValida && fechaValida ? acceso.ErrorSesion(sesionId, usuarioId) : "SesionVencida";
+        var fechaValida = long.TryParse(identidad?.FindFirstValue("exp"), out var expira)
+            && expira > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var error = usuarioValido && sesionValida && fechaValida
+            ? acceso.ErrorSesion(sesionId, usuarioId)
+            : "SesionVencida";
+
         if (error != null)
         {
-            try { await contexto.Hub.Clients.Caller.SendAsync(error == "SesionReemplazada" ? "SesionReemplazada" : "SesionTerminada", new { Codigo = error }); }
-            finally { contexto.Context.Abort(); }
+            try
+            {
+                await contexto.Hub.Clients.Caller.SendAsync(error == "SesionReemplazada" ? "SesionReemplazada" : "SesionTerminada", new
+                {
+                    Codigo = error
+                });
+            }
+            finally
+                {
+                    contexto.Context.Abort();
+                }
+
             throw new HubException("La sesión del dispositivo ya no está vigente.");
         }
 
         var validado = diagnosticar ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
         var resultado = await siguiente(contexto);
+
         if (diagnosticar)
         {
             mediciones.LogInformation("Comando {Metodo}: validacion_y_espera_ms={Validacion:F3}; ejecucion_y_publicacion_ms={Ejecucion:F3}",
                 contexto.HubMethodName, System.Diagnostics.Stopwatch.GetElapsedTime(inicio, validado).TotalMilliseconds,
                 System.Diagnostics.Stopwatch.GetElapsedTime(validado).TotalMilliseconds);
         }
+
         return resultado;
     }
 
+    // Revisa la sesión bajo el bloqueo del usuario antes de registrar una conexión nueva.
     public async Task OnConnectedAsync(HubLifetimeContext contexto, Func<HubLifetimeContext, Task> siguiente)
     {
         var usuarioId = int.Parse(contexto.Context.User!.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -60,12 +87,24 @@ public class FiltroSesionJuego : IHubFilter
         using var ambito = fabricaAmbitos.CreateScope();
         var acceso = ambito.ServiceProvider.GetRequiredService<IAccesoUsuarioLJ>();
         var error = acceso.ErrorSesion(sesionId, usuarioId);
+
         if (error != null)
         {
-            try { await contexto.Hub.Clients.Caller.SendAsync(error == "SesionReemplazada" ? "SesionReemplazada" : "SesionTerminada", new { Codigo = error }); }
-            finally { contexto.Context.Abort(); }
+            try
+            {
+                await contexto.Hub.Clients.Caller.SendAsync(error == "SesionReemplazada" ? "SesionReemplazada" : "SesionTerminada", new
+                {
+                    Codigo = error
+                });
+            }
+            finally
+                {
+                    contexto.Context.Abort();
+                }
+
             return;
         }
+
         await siguiente(contexto);
     }
 }

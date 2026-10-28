@@ -1,5 +1,7 @@
+// Comprueba capacidades, códigos de invitación y condiciones de ingreso a salas.
 using Dominio.EntidadesTipadas;
 using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
 
@@ -20,26 +22,31 @@ internal static class PruebasCapacidadSalas
                     salas.Conectar(id, 1, "c1");
                     salas.Preparar(id, 1, true);
                     Exigir(!salas.Iniciar(id, 1).Success);
+
                     for (var jugador = 2; jugador <= capacidad; jugador++)
                     {
                         Exigir(salas.Unirse(id, jugador, $"Jugador {jugador}").Success);
                         salas.Conectar(id, jugador, $"c{jugador}");
                         salas.Preparar(id, jugador, true);
                     }
+
                     Exigir(!salas.Unirse(id, capacidad + 1, "Sin espacio").Success);
                     Exigir(salas.Iniciar(id, 1).Success);
                     var estado = salas.Obtener(id, 1).Data!;
                     Exigir(estado.Tableros.Length == (modo == ModoJuego.Compartido ? 1 : capacidad));
                     Exigir(salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 }).Success);
                     Exigir(salas.SolicitarPausa(id, 1).Success);
+
                     for (var jugador = 2; jugador <= capacidad / 2 + 1; jugador++)
                     {
                         Exigir(salas.VotarPausa(id, jugador, true).Success);
                     }
+
                     Exigir(salas.Obtener(id, 1).Data!.Pausa.Fase == FasePausa.Pausada);
                     Exigir(!salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 2 }).Success);
                 });
             }
+
             prueba($"{modo}: rechaza capacidades fuera de dos a cuatro", () =>
             {
                 foreach (var capacidad in new[] { -1, 0, 1, 5, 16 })
@@ -49,6 +56,7 @@ internal static class PruebasCapacidadSalas
                 }
             });
         }
+
         prueba("Caída rápida informa su sonido una vez y la gravedad no simula movimiento manual", () =>
         {
             var motor = new MotorJuego();

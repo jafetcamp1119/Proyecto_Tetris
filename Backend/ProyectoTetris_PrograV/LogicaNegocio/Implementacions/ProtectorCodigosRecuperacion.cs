@@ -3,6 +3,8 @@ using System.Text;
 
 namespace LogicaJuego.Implementacions;
 
+// Calcula una huella del código de recuperación usando una clave privada del servidor.
+// La clave debe conservarse para poder comprobar los códigos en futuros ingresos.
 public sealed class ProtectorCodigosRecuperacion
 {
     private readonly byte[] clave;
@@ -10,7 +12,11 @@ public sealed class ProtectorCodigosRecuperacion
     public ProtectorCodigosRecuperacion(string claveServidor)
     {
         clave = Encoding.UTF8.GetBytes(claveServidor);
-        if (clave.Length < 32) { throw new InvalidOperationException("Se requiere una clave privada persistente para proteger la recuperacion."); }
+
+        if (clave.Length < 32)
+        {
+            throw new InvalidOperationException("Se requiere una clave privada persistente para proteger la recuperacion.");
+        }
     }
 
     public string CalcularHash(string codigoNormalizado)

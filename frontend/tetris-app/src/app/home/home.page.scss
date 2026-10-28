@@ -15,17 +15,15 @@ ion-content {
   isolation: isolate;
   background:
     radial-gradient(ellipse at 15% 15%, #713aff24, transparent 50%),
-    radial-gradient(ellipse at 90% 85%, #20d9df18, transparent 45%),
-    #090d1b;
+    radial-gradient(ellipse at 90% 85%, #20d9df18, transparent 45%), #090d1b;
 
   &::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     z-index: -2;
     background-image:
-      linear-gradient(#ffffff05 1px, transparent 1px),
-      linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+      linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px);
     background-size: 36px 36px;
     pointer-events: none;
   }
@@ -60,7 +58,7 @@ h1 {
   justify-content: center;
   gap: 3px;
   margin: 22px 0 12px;
-  font-family: "Arial Black", Arial, sans-serif;
+  font-family: 'Arial Black', Arial, sans-serif;
   font-size: clamp(56px, 12vw, 112px);
   font-weight: 900;
   line-height: 1.1;
@@ -70,12 +68,24 @@ h1 {
     text-shadow: 0 5px 0 #00000045;
   }
 
-  span:nth-child(1) { color: #43e4ef; }
-  span:nth-child(2) { color: #a888ff; }
-  span:nth-child(3) { color: #ff78b0; }
-  span:nth-child(4) { color: #ffbe68; }
-  span:nth-child(5) { color: #ffe17a; }
-  span:nth-child(6) { color: #73e5ae; }
+  span:nth-child(1) {
+    color: #43e4ef;
+  }
+  span:nth-child(2) {
+    color: #a888ff;
+  }
+  span:nth-child(3) {
+    color: #ff78b0;
+  }
+  span:nth-child(4) {
+    color: #ffbe68;
+  }
+  span:nth-child(5) {
+    color: #ffe17a;
+  }
+  span:nth-child(6) {
+    color: #73e5ae;
+  }
 }
 
 h2 {
@@ -322,6 +332,11 @@ footer {
   }
 }
 
-
-footer a { color: #c6afff; text-underline-offset: 4px; }
-footer a:focus-visible { outline: 3px solid #72e4ef; outline-offset: 4px; }
+footer a {
+  color: #c6afff;
+  text-underline-offset: 4px;
+}
+footer a:focus-visible {
+  outline: 3px solid #72e4ef;
+  outline-offset: 4px;
+}

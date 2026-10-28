@@ -1,14 +1,15 @@
-using Dominio.Entidades;
 using AutoMapper;
+
+using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Dominio.DTO
 {
+    // Define qué propiedades se copian entre entidades de SQL y datos de la aplicación.
+    // La información privada de autenticación no forma parte del usuario público.
     public class AutoMapperProfile : Profile
     {
+        // Configura los mapeos utilizados por los servicios y excluye los campos privados del usuario.
         public AutoMapperProfile()
         {
             CreateMap<TUsuario, Usuario>(MemberList.None)

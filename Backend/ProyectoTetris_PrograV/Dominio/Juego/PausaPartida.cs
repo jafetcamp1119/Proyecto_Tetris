@@ -28,18 +28,42 @@ public sealed class PausaPartida
         this.opciones = opciones;
     }
 
-    public FasePausa Fase { get; private set; }
+    public FasePausa Fase
+    {
+        get;
+            private set;
+    }
 
-    public int? SolicitanteId { get; private set; }
+    public int? SolicitanteId
+    {
+        get;
+            private set;
+    }
 
-    public DateTime? VencimientoVotacion { get; private set; }
+    public DateTime? VencimientoVotacion
+    {
+        get;
+            private set;
+    }
 
-    public DateTime? InicioPausa { get; private set; }
+    public DateTime? InicioPausa
+    {
+        get;
+            private set;
+    }
 
     // Es null en la pausa individual, que no tiene límite de tiempo.
-    public DateTime? FinPausa { get; private set; }
+    public DateTime? FinPausa
+    {
+        get;
+            private set;
+    }
 
-    public int HabilitadosActuales { get; private set; }
+    public int HabilitadosActuales
+    {
+        get;
+            private set;
+    }
 
     public IReadOnlyCollection<int> VotosAFavor
     {
@@ -119,6 +143,7 @@ public sealed class PausaPartida
         return null;
     }
 
+    // Comprueba que el jugador pueda votar y registra su decisión sin permitir votos repetidos.
     public string? Votar(int usuarioId, bool aceptar, IReadOnlyCollection<int> habilitados, DateTime ahora)
     {
         if (Fase != FasePausa.Votando || ahora >= VencimientoVotacion)
@@ -193,6 +218,7 @@ public sealed class PausaPartida
         FinPausa = null;
     }
 
+    // Indica si una pausa con límite de tiempo llegó a su fecha final.
     public bool PausaVencida(DateTime ahora)
     {
         return Fase == FasePausa.Pausada && FinPausa.HasValue && ahora >= FinPausa.Value;
@@ -225,6 +251,7 @@ public sealed class PausaPartida
         FinPausa = null;
     }
 
+    // Cambia de votación a pausa y fija su fecha de finalización.
     private void IniciarPausaPorVotacion(DateTime ahora)
     {
         Fase = FasePausa.Pausada;
@@ -233,6 +260,7 @@ public sealed class PausaPartida
         FinPausa = ahora.AddSeconds(opciones.SegundosPausa);
     }
 
+    // Limpia solicitante, votos y plazos para cerrar la solicitud actual.
     private void LimpiarVotacion()
     {
         Fase = FasePausa.Ninguna;

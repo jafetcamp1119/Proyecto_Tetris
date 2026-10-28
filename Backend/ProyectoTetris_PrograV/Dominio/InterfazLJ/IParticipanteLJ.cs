@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// Define operaciones sobre participantes persistidos.
 using Dominio.EntidadesTipadas;
+
 using Utilitarios;
 
 namespace Dominio.InterfazLJ
@@ -11,9 +10,13 @@ namespace Dominio.InterfazLJ
         Respuesta<TParticipante> Insertar(TParticipante participante);
 
         Respuesta<TParticipante> Modificar(TParticipante participante);
+
         Respuesta<bool> Eliminar(TParticipante participante);
+
         Respuesta<IEnumerable<TParticipante>> Obtener(TParticipante participante);
+
         Respuesta<TParticipante> Buscar(TParticipante participante);
+
         Respuesta<IEnumerable<TParticipante>> Listar();
     }
 }

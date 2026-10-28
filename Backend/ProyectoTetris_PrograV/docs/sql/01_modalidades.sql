@@ -1,3 +1,4 @@
+-- Ajusta la restricción de capacidad de Partidas para permitir Individual sin cambiar valores existentes.
 USE [TetrisDB];
 GO
 SET XACT_ABORT ON;

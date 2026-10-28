@@ -1,11 +1,17 @@
+// Comprueba sesiones únicas, códigos y consultas parametrizadas sin abrir SQL.
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+
 using AccesoDatos.Contexto;
+
 using AutoMapper;
+
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
+
 using LogicaJuego.Implementacions;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -13,7 +19,13 @@ internal static class PruebasSeguridadFinal
 {
     public static void Agregar(Action<string, Action> prueba, IMapper mapper)
     {
-        void Verificar(bool condicion) { if (!condicion) { throw new Exception("Fallo un control de seguridad final."); } }
+        void Verificar(bool condicion)
+        {
+            if (!condicion)
+            {
+                throw new Exception("Fallo un control de seguridad final.");
+            }
+        }
         prueba("Sesion unica: login desplaza, renovar no roba control y logout no revoca otra sesion", () =>
         {
             using var unidad = new UnidadMemoria();
@@ -40,15 +52,31 @@ internal static class PruebasSeguridadFinal
             var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var original = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Concurrente" }).Data!;
             var sesiones = new ConcurrentBag<TSesionJugador>();
-            Parallel.For(0, 8, _ => sesiones.Add(acceso.Recuperar(new TRecuperarSesion { Credencial = original.Credencial! }).Data!));
+            Parallel.For(
+                0,
+                8,
+                _ => sesiones.Add(acceso.Recuperar(new TRecuperarSesion { Credencial = original.Credencial! }).Data!)
+            );
             Verificar(sesiones.Count(s => acceso.SesionVigente(s.SesionId, s.Usuario.UsuarioId)) == 1);
         });
         prueba("Codigos cortos criptograficos: formato, unicidad y entradas maliciosas", () =>
         {
             var codigos = Enumerable.Range(0, 1000).Select(_ => CodigosRecuperacion.Crear()).ToArray();
             Verificar(codigos.Distinct().Count() == codigos.Length);
-            Verificar(codigos.All(c => c.Length == 14 && c[4] == '-' && c[9] == '-' && CodigosRecuperacion.Normalizar(c)?.Length == 12));
-            foreach (var valor in new[] { "' OR 1=1 --", "<script>alert(1)</script>", "AAAA-AAAA-AAAA-", "OOOO-1111-IIII", "AAAA AAAA AAAA" })
+            Verificar(
+                codigos.All(
+                c => c.Length == 14 && c[4] == '-' && c[9] == '-' && CodigosRecuperacion.Normalizar(c)?.Length == 12
+            )
+            );
+
+            foreach (var valor in new[]
+            {
+                "' OR 1=1 --",
+                "<script>alert(1)</script>",
+                "AAAA-AAAA-AAAA-",
+                "OOOO-1111-IIII",
+                "AAAA AAAA AAAA"
+            })
             {
                 Verificar(CodigosRecuperacion.Normalizar(valor) == null);
             }
@@ -61,12 +89,21 @@ internal static class PruebasSeguridadFinal
             var legado = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             unidad.Usuarios.Datos.Single().HashRecuperacion = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(legado)));
             var recuperada = acceso.RecuperarConCodigo(legado).Data!;
-            Verificar(recuperada.Usuario.UsuarioId == cuenta.Usuario.UsuarioId && recuperada.CodigoRecuperacionNuevo?.Length == 14);
+            Verificar(
+                recuperada.Usuario.UsuarioId == cuenta.Usuario.UsuarioId
+                && recuperada.CodigoRecuperacionNuevo?.Length == 14
+            );
             Verificar(!acceso.RecuperarConCodigo(recuperada.CodigoRecuperacionNuevo!).Success);
             var reintento = acceso.RecuperarConCodigo(legado).Data!;
-            Verificar(!acceso.ConfirmarRecuperacion(recuperada.Usuario.UsuarioId, recuperada.SesionId, recuperada.CodigoRecuperacionNuevo!).Success);
-            Verificar(acceso.ConfirmarRecuperacion(reintento.Usuario.UsuarioId, reintento.SesionId, reintento.CodigoRecuperacionNuevo!).Success);
-            Verificar(acceso.ConfirmarRecuperacion(reintento.Usuario.UsuarioId, reintento.SesionId, reintento.CodigoRecuperacionNuevo!).Success);
+            Verificar(
+                !acceso.ConfirmarRecuperacion(recuperada.Usuario.UsuarioId, recuperada.SesionId, recuperada.CodigoRecuperacionNuevo!).Success
+            );
+            Verificar(
+                acceso.ConfirmarRecuperacion(reintento.Usuario.UsuarioId, reintento.SesionId, reintento.CodigoRecuperacionNuevo!).Success
+            );
+            Verificar(
+                acceso.ConfirmarRecuperacion(reintento.Usuario.UsuarioId, reintento.SesionId, reintento.CodigoRecuperacionNuevo!).Success
+            );
             Verificar(!acceso.RecuperarConCodigo(legado).Success);
             Verificar(acceso.RecuperarConCodigo(reintento.CodigoRecuperacionNuevo!).Success);
         });
@@ -78,7 +115,9 @@ internal static class PruebasSeguridadFinal
             var sql = contexto.Set<Usuario>().Where(u => u.NombreUsuario == nombre).ToQueryString();
             var consulta = sql[sql.IndexOf("SELECT", StringComparison.Ordinal)..];
             Verificar(consulta.Contains('@') && consulta.Contains("WHERE") && !consulta.Contains("DROP TABLE"));
-            Verificar(contexto.Model.FindEntityType(typeof(Usuario))!.FindProperty(nameof(Usuario.SesionActivaId))!.IsConcurrencyToken);
+            Verificar(
+                contexto.Model.FindEntityType(typeof(Usuario))!.FindProperty(nameof(Usuario.SesionActivaId))!.IsConcurrencyToken
+            );
         });
     }
 }

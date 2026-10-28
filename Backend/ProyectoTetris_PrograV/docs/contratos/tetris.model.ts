@@ -56,8 +56,15 @@ export interface ITipoPiezaEspecial {
   eliminaFila: boolean;
 }
 
-export type EfectoEspecial = 'Ninguno' | 'EliminarFila' | 'EliminarColumna' | 'Confusion'
-  | 'Acelerador' | 'Bomba' | 'Barredora' | 'DoblePuntuacion';
+export type EfectoEspecial =
+  | 'Ninguno'
+  | 'EliminarFila'
+  | 'EliminarColumna'
+  | 'Confusion'
+  | 'Acelerador'
+  | 'Bomba'
+  | 'Barredora'
+  | 'DoblePuntuacion';
 
 export interface IEfectoTemporal {
   usuarioId: number;
@@ -224,11 +231,7 @@ export interface IPausa {
 
 // Nombres de los eventos de SignalR relacionados con la pausa. Todos reciben un IPausa.
 export type EventoPausa =
-  | 'PausaSolicitada'
-  | 'VotoPausaRegistrado'
-  | 'PausaRechazada'
-  | 'PausaIniciada'
-  | 'PausaFinalizada';
+  'PausaSolicitada' | 'VotoPausaRegistrado' | 'PausaRechazada' | 'PausaIniciada' | 'PausaFinalizada';
 
 export interface ISalaPublica {
   id: string;
@@ -241,7 +244,12 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
-  progresoCompartido?: { filasNormales: number; nivel: number; progresoSiguienteNivel: number; intervaloCaidaMs: number } | null;
+  progresoCompartido?: {
+    filasNormales: number;
+    nivel: number;
+    progresoSiguienteNivel: number;
+    intervaloCaidaMs: number;
+  } | null;
   numeroRonda: number;
   // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
   efectos: IEfectoTemporal[];
@@ -300,7 +308,6 @@ export interface IRanking {
   partidasJugadas: number;
   partidasGanadas: number;
 }
-
 
 // El estado completo y estos eventos usan el mismo salaId.
 export interface ISalaCerrada {

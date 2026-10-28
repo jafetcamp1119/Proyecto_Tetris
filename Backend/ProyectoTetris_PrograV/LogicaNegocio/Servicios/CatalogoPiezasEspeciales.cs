@@ -1,8 +1,10 @@
 using Dominio.InterfazAD;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Utilitarios;
 
 namespace LogicaJuego.Servicios;
@@ -27,6 +29,7 @@ public class CatalogoPiezasEspeciales : ICatalogoPiezasEspeciales
         return codigo.Contains("FILA", StringComparison.OrdinalIgnoreCase);
     }
 
+    // Consulta los tipos activos y copia sus propiedades para utilizarlas sin retener entidades de EF.
     public Respuesta<TipoPiezaEspecial[]> ObtenerActivas()
     {
         try

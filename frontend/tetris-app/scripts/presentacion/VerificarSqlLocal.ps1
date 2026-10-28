@@ -1,3 +1,4 @@
+# Comprueba la conexión SQL local mediante el código de verificación del proyecto.
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'ConfiguracionPrivada.ps1')
 $frontend = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent

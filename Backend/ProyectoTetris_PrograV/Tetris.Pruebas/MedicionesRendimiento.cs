@@ -1,3 +1,4 @@
+// Reúne mediciones de los escenarios de rendimiento de las pruebas HTTP.
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -15,6 +16,7 @@ internal static class MedicionesRendimiento
                 valores = new List<double>();
                 tiempos.Add(nombre, valores);
             }
+
             valores.Add(Stopwatch.GetElapsedTime(inicio).TotalMilliseconds);
         }
     }
@@ -28,9 +30,11 @@ internal static class MedicionesRendimiento
                 var ordenados = valores.Order().ToArray();
                 Console.WriteLine("MEDICION_LOCAL " + JsonSerializer.Serialize(new
                 {
-                    nombre, muestras = ordenados.Length,
+                    nombre,
+                    muestras = ordenados.Length,
                     p50Ms = ordenados[(int)((ordenados.Length - 1) * 0.5)],
-                    p95Ms = ordenados[(int)((ordenados.Length - 1) * 0.95)], maxMs = ordenados[^1]
+                    p95Ms = ordenados[(int)((ordenados.Length - 1) * 0.95)],
+                    maxMs = ordenados[^1]
                 }));
             }
         }

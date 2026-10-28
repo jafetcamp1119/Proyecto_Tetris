@@ -15,6 +15,7 @@ internal sealed class ControlEfectos
         this.opciones = opciones;
     }
 
+    // Registra el efecto al fijarse una pieza; los ataques temporales buscan otro jugador habilitado.
     public void Activar(SalaMemoria sala, JugadorSala atacante, TableroJuego tablero, int puntos, DateTime ahora)
     {
         var codigo = tablero.EspecialUltimoEvento;
@@ -57,6 +58,7 @@ internal sealed class ControlEfectos
             tablero.CeldasEliminadasEspecial.Select(celda => new TCelda(celda.Fila, celda.Columna)).ToArray(), estado, tipo);
     }
 
+    // En Compartido busca al siguiente rival no eliminado ni retirado en el orden de turnos.
     private static JugadorSala? BuscarObjetivo(SalaMemoria sala, JugadorSala atacante)
     {
         if (sala.Modo != ModoJuego.Compartido)
@@ -79,6 +81,7 @@ internal sealed class ControlEfectos
         return null;
     }
 
+    // Actualiza los tiempos restantes y desactiva efectos por vencimiento, eliminación o fin.
     public static void Actualizar(SalaMemoria sala, DateTime ahora)
     {
         var instante = ahora;
@@ -137,6 +140,7 @@ internal sealed class ControlEfectos
         }
     }
 
+    // Invierte izquierda y derecha en el servidor mientras Confusion esté activa.
     public static Movimiento TraducirMovimiento(JugadorSala jugador, Movimiento movimiento)
     {
         if (!jugador.Efectos.Any(efecto => efecto.Activo && efecto.Tipo == EfectoEspecial.Confusion))
@@ -155,6 +159,7 @@ internal sealed class ControlEfectos
         }
     }
 
+    // Devuelve el mayor factor de aceleración activo, o uno si no hay ninguno.
     public static int FactorVelocidad(JugadorSala jugador)
     {
         return jugador.Efectos.Where(efecto => efecto.Activo && efecto.Tipo == EfectoEspecial.Acelerador)

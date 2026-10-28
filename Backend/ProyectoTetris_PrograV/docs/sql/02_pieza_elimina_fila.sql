@@ -1,3 +1,4 @@
+-- Completa el catálogo TiposPieza con el especial de fila cuando todavía no existe.
 USE [TetrisDB];
 GO
 SET XACT_ABORT ON;

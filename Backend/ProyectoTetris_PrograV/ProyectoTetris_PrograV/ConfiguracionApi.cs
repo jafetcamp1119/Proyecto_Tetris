@@ -1,14 +1,20 @@
 using System.Text.Json.Serialization;
+
 using Microsoft.AspNetCore.Mvc;
-using ProyectoTetris_PrograV.Controllers;
-using Utilitarios;
 using Microsoft.AspNetCore.SignalR;
+
+using ProyectoTetris_PrograV.Controllers;
 using ProyectoTetris_PrograV.Seguridad;
+
+using Utilitarios;
 
 namespace ProyectoTetris_PrograV;
 
+// Registra controladores, límites de solicitudes y SignalR.
+// También prepara el formato común de las respuestas de validación.
 public static class ConfiguracionApi
 {
+    // Registra servicios de acceso y límites por IP o cuenta, junto con los filtros HTTP y del hub.
     public static IServiceCollection AgregarApiTetris(this IServiceCollection servicios)
     {
         servicios.AddSingleton<DesafiosGoogle>();
@@ -23,17 +29,29 @@ public static class ConfiguracionApi
                 System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
                     contexto.Connection.RemoteIpAddress?.ToString() ?? "local",
                     _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-                    { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+                    {
+                        PermitLimit = 5,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
             opciones.AddPolicy("GenerarCodigo", contexto =>
                 System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
                     contexto.User.FindFirst("sub")?.Value ?? "anonimo",
                     _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-                    { PermitLimit = 3, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
+                    {
+                        PermitLimit = 3,
+                        Window = TimeSpan.FromMinutes(10),
+                        QueueLimit = 0
+                    }));
             opciones.AddPolicy("CrearSala", contexto =>
                 System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
                     contexto.User.FindFirst("sub")?.Value ?? "anonimo",
                     _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-                    { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+                    {
+                        PermitLimit = 60,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
             opciones.AddPolicy("Acceso", contexto =>
                 System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
                     contexto.Connection.RemoteIpAddress?.ToString() ?? "local",

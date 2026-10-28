@@ -1,126 +1,167 @@
+<!-- La sala recibida determina espera, juego, espectador y resultados; el cliente no decide ganadores. -->
 <ion-content [scrollY]="salas.sala()?.estado !== 'EnCurso'">
-    <main class="pantalla-tetris pantalla-partida" [class.en-curso]="salas.sala()?.estado === 'EnCurso'">
-        <nav class="acciones">
-            <button class="accion secundaria" (click)="salir()">← Salir al menú</button>
-            <span role="status">{{ salas.mensajeConexion() }}</span>
-            @if (!salas.conectado()) {
-                <button class="accion" [disabled]="ocupado" (click)="reconectar(true)">Reconectar</button>
-            }
-        </nav>
-        <p class="mensaje-error" role="alert">{{ mensaje }}</p>
-        <app-codigo-recuperacion />
-        @if (salas.sala(); as sala) {
-            <h1>{{ nombreModo(sala.modo) }} · Ronda {{ sala.numeroRonda }}</h1>
-            @if ((sala.modo === 'Compartido' || sala.modo === 'Competitivo') && sala.estado !== 'Cancelada') {
-                <app-codigo-sala [codigo]="sala.codigo" />
-            }
-            @if (sala.estado === 'Esperando') {
-                <section class="tarjeta-tetris">
-                    <h2>{{ sala.modo === 'Individual' ? 'Prepará tu partida' : 'Sala de espera' }}</h2>
-                    @if (sala.modo !== 'Individual') { <p>{{ sala.privada ? 'Sala privada' : 'Sala pública' }}</p> }
-                    <p>{{ sala.jugadores.length }} / {{ sala.maximoJugadores }} jugadores. {{ sala.modo === 'Individual' ? 'Un jugador.' : 'Mínimo dos jugadores.' }}</p>
-                    <details>
-                        <summary>Configuración de la partida</summary>
-                        <p>Velocidad: {{ sala.velocidad === 'Rapida' ? 'Rápida' : sala.velocidad }} · Piezas: {{ sala.piezasNormales.join(', ') }}</p>
-                        <p>Puntos por una, dos, tres y cuatro líneas: {{ sala.puntos.unaLinea }}, {{ sala.puntos.dosLineas }}, {{ sala.puntos.tresLineas }}, {{ sala.puntos.cuatroLineas }}</p>
-                        <p>Especiales: {{ sala.piezasEspeciales.activas ? sala.piezasEspeciales.probabilidad + '%' : 'Desactivadas' }}</p>
-                        @if (sala.piezasEspeciales.activas) {
-                            <app-piezas-especiales [configuracion]="sala.piezasEspeciales" [catalogo]="catalogo" [editable]="false" />
-                        }
-                        <p>Meta: {{ sala.metaPuntos || 'Sin meta' }} · Mínimo de victorias para corona: {{ sala.minimoVictoriasCorona || 'Regla predeterminada' }}</p>
-                    </details>
-                    @for (jugador of sala.jugadores; track jugador.usuarioId) {
-                        <p>{{ jugador.usuarioId === sala.creadorId ? '♛ Creador · ' : '' }}{{ jugador.nombre }} · {{ jugador.listo ? 'Listo' : 'Preparándose' }} · {{ jugador.conectado ? 'Conectado' : 'Desconectado' }}</p>
-                        @if (jugador.usuarioId === usuarioId) {
-                            <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('listo', !jugador.listo, 'PUT')">{{ jugador.listo ? 'No estoy listo' : 'Estoy listo' }}</button>
-                        }
-                    }
-                    @if (esCreador) {
-                        <div class="acciones">
-                            <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('iniciar')">Iniciar partida</button>
-                            <button class="accion secundaria" (click)="editar(sala)">Configurar sala</button>
-                        </div>
-                        @if (configuracion) {
-                            <app-configuracion-sala [datos]="configuracion" [creacion]="false" [catalogo]="catalogo" />
-                            <button class="accion" [disabled]="ocupado" (click)="guardarConfiguracion()">Guardar configuración</button>
-                        }
-                    }
-                </section>
-            }
-            @if (sala.estado === 'EnCurso') {
-                <div class="juego-contenido">
-                    <section class="zona-tablero">
-                        <p class="turno">{{ estadoJugador }}</p>
-                        @if (tablero; as actual) {
-                            <app-tablero [tablero]="actual" [nombreEspecial]="nombreEspecial(actual.piezaEspecial)" />
-                            @if (sala.progresoCompartido; as progreso) {
-                                <p>{{ puntosJugador }} puntos · Nivel: {{ progreso.nivel }}</p>
-                                <p>Filas para el próximo nivel: {{ progreso.progresoSiguienteNivel }}/10 · {{ progreso.filasNormales }} líneas globales</p>
-                            } @else {
-                                <p>{{ actual.puntuacion }} puntos · Nivel {{ actual.nivel }} · {{ actual.lineas }} líneas</p>
-                            }
-                        }
-                        <app-controles [habilitado]="salas.puedeMover()" (movimiento)="mover($event)" />
-                    </section>
-                    <aside class="panel-jugadores">
-                        <app-siguiente-pieza [pieza]="salas.vistaPrevia()?.pieza ?? null" [espectador]="espectador"
-                            [nombreEspecial]="nombreEspecial(salas.vistaPrevia()?.pieza?.piezaEspecial ?? null)" />
-                        <h2>Jugadores</h2>
-                        @for (jugador of sala.jugadores; track jugador.usuarioId) {
-                            <p [class.jugador-turno]="sala.usuarioTurno === jugador.usuarioId">
-                                {{ jugador.usuarioId === sala.creadorId ? '♛ ' : '' }}{{ jugador.corona ? '👑 ' : '' }}{{ jugador.nombre }}
-                                · {{ jugador.puntos }} pts · {{ jugador.victoriasSala }} victorias
-                                {{ jugador.perdido ? '· Espectador' : '' }}{{ !jugador.conectado ? ' · Desconectado' : '' }}
-                            </p>
-                            @if (!salas.puedeMover() && sala.modo === 'Competitivo') {
-                                <button class="accion secundaria" (click)="observando = jugador.usuarioId">Ver tablero de {{ jugador.nombre }}</button>
-                            }
-                        }
-                        @for (efecto of sala.efectos; track efecto.usuarioId + ':' + efecto.tipo) {
-                            @if (efecto.activo) {
-                                <p class="efecto">{{ nombresEfectos[efecto.tipo] }} · {{ nombreJugador(efecto.usuarioId) }} · {{ (efecto.milisegundosRestantes / 1000).toFixed(1) }} s</p>
-                            }
-                        }
-                        @if (sala.ultimoEfecto; as efecto) {
-                            <p class="especial-activa">{{ nombresEfectos[efecto.tipo] }} · {{ efecto.estado === 'Aplicado' ? 'Efecto aplicado' : 'Sin un jugador disponible para recibirlo' }}{{ efecto.celdasEliminadas.length ? ' · ' + efecto.celdasEliminadas.length + ' bloques eliminados' : '' }}</p>
-                        }
-                        <section class="pausa">
-                            @if (sala.pausa.fase === 'Ninguna') {
-                                <button class="accion secundaria" [disabled]="ocupado || !salas.conectado()" (click)="accion('pausa')">Solicitar pausa</button>
-                            } @else if (sala.pausa.fase === 'Votando') {
-                                <p>{{ sala.pausa.solicitanteNombre }} solicita pausa. {{ segundosPausa }} s · {{ sala.pausa.votosAFavor.length }}/{{ sala.pausa.votosNecesarios }} votos</p>
-                                <button class="accion" [disabled]="ocupado" (click)="accion('pausa/voto', { aceptar: true })">Aceptar</button>
-                                <button class="accion secundaria" [disabled]="ocupado" (click)="accion('pausa/voto', { aceptar: false })">Rechazar</button>
-                            } @else {
-                                <p>Partida pausada {{ sala.pausa.finPausaUtc ? '· ' + segundosPausa + ' s' : '' }}</p>
-                                @if (sala.modo === 'Individual') {
-                                    <button class="accion" [disabled]="ocupado" (click)="accion('reanudar')">Reanudar</button>
-                                }
-                            }
-                        </section>
-                    </aside>
-                </div>
-            }
-            @if (sala.estado === 'Finalizada') {
-                <section class="tarjeta-tetris resultados">
-                    <h2>{{ sala.modo === 'Individual' ? 'Game Over' : 'Resultados de la ronda' }}</h2>
-                    <p>{{ motivoFinal(sala.motivoFin) }}</p>
-                    @for (jugador of sala.jugadores; track jugador.usuarioId) {
-                        <article class="fila-resultado">
-                            <strong>{{ jugador.ganoRonda ? (sala.ganadores.length > 1 ? '🤝 Empate · ' : '🏆 Victoria · ') : '' }}{{ jugador.nombre }}</strong>
-                            <p>{{ jugador.puntos }} puntos · Posición {{ jugador.posicion }} · {{ jugador.victoriasSala }} victorias {{ jugador.corona ? '👑' : '' }}</p>
-                        </article>
-                    }
-                    <p>Consultá tu récord y tu historial en Mi perfil.</p>
-                    @if (esCreador) {
-                        <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('nueva-ronda')">Preparar otra ronda</button>
-                    }
-                    <button class="accion secundaria" (click)="salir()">Volver al menú</button>
-                </section>
-            }
-            @if (sala.estado === 'Cancelada') {
-                <section class="tarjeta-tetris"><h2>Sala cerrada</h2><p>{{ salas.mensajeConexion() }}</p><button class="accion" (click)="salir()">Volver al menú</button></section>
-            }
+  <main class="pantalla-tetris pantalla-partida" [class.en-curso]="salas.sala()?.estado === 'EnCurso'">
+    <nav class="acciones">
+      <button class="accion secundaria" (click)="salir()">← Salir al menú</button>
+      <span role="status">{{ salas.mensajeConexion() }}</span>
+      @if (!salas.conectado()) {
+      <button class="accion" [disabled]="ocupado" (click)="reconectar(true)">Reconectar</button>
+      }
+    </nav>
+    <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+    <app-codigo-recuperacion />
+    @if (salas.sala(); as sala) {
+    <h1>{{ nombreModo(sala.modo) }} · Ronda {{ sala.numeroRonda }}</h1>
+    @if ((sala.modo === 'Compartido' || sala.modo === 'Competitivo') && sala.estado !== 'Cancelada') {
+    <app-codigo-sala [codigo]="sala.codigo" />
+    } @if (sala.estado === 'Esperando') {
+    <section class="tarjeta-tetris">
+      <h2>{{ sala.modo === 'Individual' ? 'Prepará tu partida' : 'Sala de espera' }}</h2>
+      @if (sala.modo !== 'Individual') { <p>{{ sala.privada ? 'Sala privada' : 'Sala pública' }}</p> }
+      <p
+        >{{ sala.jugadores.length }} / {{ sala.maximoJugadores }} jugadores. {{ sala.modo === 'Individual' ? 'Un
+        jugador.' : 'Mínimo dos jugadores.' }}</p
+      >
+      <details>
+        <summary>Configuración de la partida</summary>
+        <p
+          >Velocidad: {{ sala.velocidad === 'Rapida' ? 'Rápida' : sala.velocidad }} · Piezas: {{
+          sala.piezasNormales.join(', ') }}</p
+        >
+        <p
+          >Puntos por una, dos, tres y cuatro líneas: {{ sala.puntos.unaLinea }}, {{ sala.puntos.dosLineas }}, {{
+          sala.puntos.tresLineas }}, {{ sala.puntos.cuatroLineas }}</p
+        >
+        <p
+          >Especiales: {{ sala.piezasEspeciales.activas ? sala.piezasEspeciales.probabilidad + '%' : 'Desactivadas'
+          }}</p
+        >
+        @if (sala.piezasEspeciales.activas) {
+        <app-piezas-especiales [configuracion]="sala.piezasEspeciales" [catalogo]="catalogo" [editable]="false" />
         }
-    </main>
+        <p
+          >Meta: {{ sala.metaPuntos || 'Sin meta' }} · Mínimo de victorias para corona: {{ sala.minimoVictoriasCorona ||
+          'Regla predeterminada' }}</p
+        >
+      </details>
+      @for (jugador of sala.jugadores; track jugador.usuarioId) {
+      <p
+        >{{ jugador.usuarioId === sala.creadorId ? '♛ Creador · ' : '' }}{{ jugador.nombre }} · {{ jugador.listo ?
+        'Listo' : 'Preparándose' }} · {{ jugador.conectado ? 'Conectado' : 'Desconectado' }}</p
+      >
+      @if (jugador.usuarioId === usuarioId) {
+      <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('listo', !jugador.listo, 'PUT')"
+        >{{ jugador.listo ? 'No estoy listo' : 'Estoy listo' }}</button
+      >
+      } } @if (esCreador) {
+      <div class="acciones">
+        <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('iniciar')"
+          >Iniciar partida</button
+        >
+        <button class="accion secundaria" (click)="editar(sala)">Configurar sala</button>
+      </div>
+      @if (configuracion) {
+      <app-configuracion-sala [datos]="configuracion" [creacion]="false" [catalogo]="catalogo" />
+      <button class="accion" [disabled]="ocupado" (click)="guardarConfiguracion()">Guardar configuración</button>
+      } }
+    </section>
+    } @if (sala.estado === 'EnCurso') {
+    <div class="juego-contenido">
+      <section class="zona-tablero">
+        <p class="turno">{{ estadoJugador }}</p>
+        @if (tablero; as actual) {
+        <app-tablero [tablero]="actual" [nombreEspecial]="nombreEspecial(actual.piezaEspecial)" />
+        @if (sala.progresoCompartido; as progreso) {
+        <p>{{ puntosJugador }} puntos · Nivel: {{ progreso.nivel }}</p>
+        <p
+          >Filas para el próximo nivel: {{ progreso.progresoSiguienteNivel }}/10 · {{ progreso.filasNormales }} líneas
+          globales</p
+        >
+        } @else {
+        <p>{{ actual.puntuacion }} puntos · Nivel {{ actual.nivel }} · {{ actual.lineas }} líneas</p>
+        } }
+        <app-controles [habilitado]="salas.puedeMover()" (movimiento)="mover($event)" />
+      </section>
+      <aside class="panel-jugadores">
+        <app-siguiente-pieza
+          [pieza]="salas.vistaPrevia()?.pieza ?? null"
+          [espectador]="espectador"
+          [nombreEspecial]="nombreEspecial(salas.vistaPrevia()?.pieza?.piezaEspecial ?? null)"
+        />
+        <h2>Jugadores</h2>
+        @for (jugador of sala.jugadores; track jugador.usuarioId) {
+        <p [class.jugador-turno]="sala.usuarioTurno === jugador.usuarioId">
+          {{ jugador.usuarioId === sala.creadorId ? '♛ ' : '' }}{{ jugador.corona ? '👑 ' : '' }}{{ jugador.nombre }} ·
+          {{ jugador.puntos }} pts · {{ jugador.victoriasSala }} victorias {{ jugador.perdido ? '· Espectador' : '' }}{{
+          !jugador.conectado ? ' · Desconectado' : '' }}
+        </p>
+        @if (!salas.puedeMover() && sala.modo === 'Competitivo') {
+        <button class="accion secundaria" (click)="observando = jugador.usuarioId"
+          >Ver tablero de {{ jugador.nombre }}</button
+        >
+        } } @for (efecto of sala.efectos; track efecto.usuarioId + ':' + efecto.tipo) { @if (efecto.activo) {
+        <p class="efecto"
+          >{{ nombresEfectos[efecto.tipo] }} · {{ nombreJugador(efecto.usuarioId) }} · {{ (efecto.milisegundosRestantes
+          / 1000).toFixed(1) }} s</p
+        >
+        } } @if (sala.ultimoEfecto; as efecto) {
+        <p class="especial-activa"
+          >{{ nombresEfectos[efecto.tipo] }} · {{ efecto.estado === 'Aplicado' ? 'Efecto aplicado' : 'Sin un jugador
+          disponible para recibirlo' }}{{ efecto.celdasEliminadas.length ? ' · ' + efecto.celdasEliminadas.length + '
+          bloques eliminados' : '' }}</p
+        >
+        }
+        <section class="pausa">
+          @if (sala.pausa.fase === 'Ninguna') {
+          <button class="accion secundaria" [disabled]="ocupado || !salas.conectado()" (click)="accion('pausa')"
+            >Solicitar pausa</button
+          >
+          } @else if (sala.pausa.fase === 'Votando') {
+          <p
+            >{{ sala.pausa.solicitanteNombre }} solicita pausa. {{ segundosPausa }} s · {{ sala.pausa.votosAFavor.length
+            }}/{{ sala.pausa.votosNecesarios }} votos</p
+          >
+          <button class="accion" [disabled]="ocupado" (click)="accion('pausa/voto', { aceptar: true })">Aceptar</button>
+          <button class="accion secundaria" [disabled]="ocupado" (click)="accion('pausa/voto', { aceptar: false })"
+            >Rechazar</button
+          >
+          } @else {
+          <p>Partida pausada {{ sala.pausa.finPausaUtc ? '· ' + segundosPausa + ' s' : '' }}</p>
+          @if (sala.modo === 'Individual') {
+          <button class="accion" [disabled]="ocupado" (click)="accion('reanudar')">Reanudar</button>
+          } }
+        </section>
+      </aside>
+    </div>
+    } @if (sala.estado === 'Finalizada') {
+    <section class="tarjeta-tetris resultados">
+      <h2>{{ sala.modo === 'Individual' ? 'Game Over' : 'Resultados de la ronda' }}</h2>
+      <p>{{ motivoFinal(sala.motivoFin) }}</p>
+      @for (jugador of sala.jugadores; track jugador.usuarioId) {
+      <article class="fila-resultado">
+        <strong
+          >{{ jugador.ganoRonda ? (sala.ganadores.length > 1 ? '🤝 Empate · ' : '🏆 Victoria · ') : '' }}{{
+          jugador.nombre }}</strong
+        >
+        <p
+          >{{ jugador.puntos }} puntos · Posición {{ jugador.posicion }} · {{ jugador.victoriasSala }} victorias {{
+          jugador.corona ? '👑' : '' }}</p
+        >
+      </article>
+      }
+      <p>Consultá tu récord y tu historial en Mi perfil.</p>
+      @if (esCreador) {
+      <button class="accion" [disabled]="ocupado || !salas.conectado()" (click)="accion('nueva-ronda')"
+        >Preparar otra ronda</button
+      >
+      }
+      <button class="accion secundaria" (click)="salir()">Volver al menú</button>
+    </section>
+    } @if (sala.estado === 'Cancelada') {
+    <section class="tarjeta-tetris"
+      ><h2>Sala cerrada</h2><p>{{ salas.mensajeConexion() }}</p
+      ><button class="accion" (click)="salir()">Volver al menú</button></section
+    >
+    } }
+  </main>
 </ion-content>

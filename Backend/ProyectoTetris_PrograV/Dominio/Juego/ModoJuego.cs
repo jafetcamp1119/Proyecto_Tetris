@@ -1,3 +1,4 @@
+// Nombres compartidos de modos, estados de sala y movimientos aceptados por el servidor.
 namespace Dominio.Juego;
 
 public enum ModoJuego

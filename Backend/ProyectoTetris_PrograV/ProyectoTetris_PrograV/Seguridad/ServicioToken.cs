@@ -1,11 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 using Dominio.EntidadesTipadas;
+
 using Microsoft.IdentityModel.Tokens;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
+// Crea el JWT firmado con el usuario, la sesión activa y su vencimiento.
 public class ServicioToken
 {
     private readonly OpcionesJwt _opciones;
@@ -15,6 +18,7 @@ public class ServicioToken
         _opciones = opciones;
     }
 
+    // Firma el JWT con sub, sid, nombre y jti; devuelve el token y su fecha de vencimiento.
     public TAutenticacion Crear(TUsuario usuario, Guid sesionId)
     {
         var ahora = DateTime.UtcNow;

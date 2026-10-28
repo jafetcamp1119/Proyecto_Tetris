@@ -14,12 +14,22 @@ vi.mock('@capacitor/app', () => ({ App: { addListener: vi.fn(), exitApp: vi.fn()
 describe('AppComponent', () => {
   it('Capacitor verifica al reactivar la app usando el listener compartido existente', async () => {
     vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
-    const listener = vi.mocked(App.addListener).mockReset().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) });
+    const listener = vi
+      .mocked(App.addListener)
+      .mockReset()
+      .mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) });
     const comprobar = vi.fn().mockResolvedValue(undefined);
-    TestBed.configureTestingModule({ imports: [AppComponent], providers: [provideRouter([]),
-      { provide: VigilanciaSesionServicio, useValue: { verificar: comprobar } },
-      { provide: Platform, useValue: { backButton: { subscribeWithPriority: () => ({ unsubscribe: () => undefined }) } } }
-    ] });
+    TestBed.configureTestingModule({
+      imports: [AppComponent],
+      providers: [
+        provideRouter([]),
+        { provide: VigilanciaSesionServicio, useValue: { verificar: comprobar } },
+        {
+          provide: Platform,
+          useValue: { backButton: { subscribeWithPriority: () => ({ unsubscribe: () => undefined }) } },
+        },
+      ],
+    });
     const fixture = TestBed.createComponent(AppComponent);
     await Promise.resolve();
     const activar = listener.mock.calls[0][1] as unknown as (estado: { isActive: boolean }) => void;
@@ -45,9 +55,9 @@ describe('AppComponent', () => {
   it('should create the app', async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter([])]
+      providers: [provideRouter([])],
     }).compileComponents();
-    
+
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
     expect(app).toBeTruthy();
@@ -57,7 +67,10 @@ describe('AppComponent', () => {
     const horizontal = signal(false);
     TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideRouter([]), { provide: OrientacionServicio, useValue: { requiereVertical: horizontal.asReadonly() } }]
+      providers: [
+        provideRouter([]),
+        { provide: OrientacionServicio, useValue: { requiereVertical: horizontal.asReadonly() } },
+      ],
     });
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();

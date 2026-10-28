@@ -18,6 +18,7 @@ public enum EfectoEspecial
 // Los códigos del catálogo SQL se traducen una sola vez a reglas conocidas del servidor.
 public static class EfectosEspeciales
 {
+    // Traduce las propiedades y el código del catálogo a un efecto conocido por el motor.
     public static EfectoEspecial Identificar(TipoPiezaEspecial tipo)
     {
         if (tipo.EliminaColumna)
@@ -55,10 +56,25 @@ public static class EfectosEspeciales
 
 public sealed class OpcionesEfectos
 {
-    public int SegundosConfusion { get; set; } = 10;
-    public int SegundosAcelerador { get; set; } = 10;
-    public int FactorAcelerador { get; set; } = 2;
+    public int SegundosConfusion
+        {
+            get;
+            set;
+        } = 10;
 
+    public int SegundosAcelerador
+        {
+            get;
+            set;
+        } = 10;
+
+    public int FactorAcelerador
+        {
+            get;
+            set;
+        } = 2;
+
+    // Rechaza duraciones no positivas y un factor de aceleración menor que dos.
     public void Validar()
     {
         if (SegundosConfusion < 1 || SegundosAcelerador < 1 || FactorAcelerador < 2)

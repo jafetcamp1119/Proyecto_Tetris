@@ -1,0 +1,15 @@
+node_modules/
+.angular/
+.firebase/
+.resolver-dependencias/
+www/
+dist/
+build/
+**/bin/
+**/obj/
+android/
+ios/
+evidencias/
+package-lock.json
+presentacion/qr-tetris.svg
+src/assets/

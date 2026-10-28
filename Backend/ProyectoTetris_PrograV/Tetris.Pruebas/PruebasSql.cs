@@ -1,12 +1,16 @@
+// Contiene pruebas de integración opcionales que utilizan SQL Server.
 using AccesoDatos;
 using AccesoDatos.Contexto;
+
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
-using Dominio.Juego;
 using Dominio.InterfazAD;
 using Dominio.InterfazJuego;
+using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,10 +18,12 @@ internal static class PruebasSql
 {
     public static async Task<int> EjecutarAsync()
     {
-        var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB") ?? "Server=JAFET\\SQLEXPRESS;Database=TetrisDB;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;Connect Timeout=5";
+        var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB")
+            ?? "Server=JAFET\\SQLEXPRESS;Database=TetrisDB;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;Connect Timeout=5";
         await using var db = new TetrisDBContext(new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer(cadena).Options);
         await using var transaccion = await db.Database.BeginTransactionAsync();
         var prefijo = "PruebaArq_" + Guid.NewGuid().ToString("N")[..10];
+
         try
         {
             VerificarCatalogoReal(cadena);
@@ -28,6 +34,7 @@ internal static class PruebasSql
             await db.SaveChangesAsync();
             using var unidad = new UnidadTrabajoEF(db);
             var registro = new RegistroPartidaLJ(unidad);
+
             foreach (var modo in new[]
             {
                 ModoJuego.Individual,
@@ -43,6 +50,7 @@ internal static class PruebasSql
                     usuarios[0].NombreUsuario,
                     new TCrearSala { Modo = modo }).Data!.Id;
                 var cantidad = modo == ModoJuego.Individual ? 1 : 4;
+
                 for (var i = 0; i < cantidad; i++)
                 {
                     if (i > 0)
@@ -55,6 +63,7 @@ internal static class PruebasSql
                 }
 
                 var inicio = salas.Iniciar(id, usuarios[0].UsuarioId);
+
                 if (!inicio.Success)
                 {
                     throw new Exception(inicio.Error);
@@ -63,6 +72,7 @@ internal static class PruebasSql
                 await registro.GuardarAsync(inicio.Data!);
                 // En compartido pierde cada turno hasta que queda un superviviente.
                 var derrotas = modo == ModoJuego.Compartido ? cantidad - 1 : cantidad;
+
                 for (var i = 0; i < derrotas; i++)
                 {
                     var estado = salas.Mover(
@@ -74,6 +84,7 @@ internal static class PruebasSql
 
                 var final = salas.Obtener(id, usuarios[0].UsuarioId).Data!;
                 await registro.GuardarAsync(final);
+
                 if (final.Estado != EstadoSala.Finalizada)
                 {
                     throw new Exception("La partida no finalizó.");
@@ -82,7 +93,9 @@ internal static class PruebasSql
                 var identificador = final.Id.ToString("N")[..12];
                 var partida = await db.Partidas.SingleAsync(p => p.CodigoSala == identificador);
                 var resultados = await db.Resultados.Where(r => r.PartidaId == partida.PartidaId).ToListAsync();
-                if (resultados.Count != cantidad || resultados.Any(r => r.PosicionFinal != (modo == ModoJuego.Compartido && !r.EsGanador ? 2 : 1)))
+
+                if (resultados.Count != cantidad
+                    || resultados.Any(r => r.PosicionFinal != (modo == ModoJuego.Compartido && !r.EsGanador ? 2 : 1)))
                 {
                     throw new Exception("Resultados inconsistentes en SQL.");
                 }
@@ -96,6 +109,7 @@ internal static class PruebasSql
             }
 
             var estadistica = await db.EstadisticasJugadors.SingleAsync(e => e.UsuarioId == usuarios[0].UsuarioId);
+
             if (estadistica.PartidasJugadas != 3)
             {
                 throw new Exception("Se duplicaron o faltaron estadísticas.");
@@ -126,6 +140,7 @@ internal static class PruebasSql
             await registro.GuardarAsync(cancelada);
             var identificadorCancelada = cancelada.Id.ToString("N")[..12];
             var entidadCancelada = await db.Partidas.SingleAsync(partida => partida.CodigoSala == identificadorCancelada);
+
             if (entidadCancelada.Estado != "Cancelada" || entidadCancelada.GanadorId != null
                 || await db.Resultados.AnyAsync(resultado => resultado.PartidaId == entidadCancelada.PartidaId))
             {
@@ -134,6 +149,7 @@ internal static class PruebasSql
 
             var quedanActivos = await db.ParticipantesPartida.AnyAsync(participante =>
                 participante.PartidaId == entidadCancelada.PartidaId && participante.Estado == "Jugando");
+
             if (quedanActivos)
             {
                 throw new Exception("La cancelación dejó participantes jugando.");
@@ -142,6 +158,7 @@ internal static class PruebasSql
             await registro.CancelarInterrumpidasAsync();
             var finales = await db.Partidas.CountAsync(partida => partida.CreadorId == usuarios[0].UsuarioId
                 && partida.Estado == "Finalizada");
+
             if (finales != 3 || estadistica.PartidasJugadas != 3)
             {
                 throw new Exception("La limpieza de reinicio alteró finales o estadísticas.");
@@ -161,7 +178,11 @@ internal static class PruebasSql
             await transaccion.RollbackAsync();
             db.ChangeTracker.Clear();
             var quedan = await db.Usuarios.AnyAsync(u => u.NombreUsuario.StartsWith(prefijo));
-            Console.WriteLine(quedan ? "ERROR: revisar limpieza de usuarios de prueba." : "ROLLBACK correcto: no quedaron registros de prueba.");
+            Console.WriteLine(
+                quedan
+                ? "ERROR: revisar limpieza de usuarios de prueba."
+                : "ROLLBACK correcto: no quedaron registros de prueba."
+            );
         }
     }
 
@@ -170,6 +191,7 @@ internal static class PruebasSql
         var salas = new SalaLJ(new MotorControlado());
         var id = salas.Crear(usuarios[0].UsuarioId, usuarios[0].NombreUsuario,
             new TCrearSala { Modo = ModoJuego.Competitivo }).Data!.Id;
+
         for (var indice = 0; indice < usuarios.Length; indice++)
         {
             if (indice > 0)
@@ -189,6 +211,7 @@ internal static class PruebasSql
 
             var inicio = salas.Iniciar(id, usuarios[0].UsuarioId).Data!;
             await registro.GuardarAsync(inicio);
+
             foreach (var usuario in usuarios)
             {
                 salas.Mover(id, usuario.UsuarioId, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
@@ -198,6 +221,7 @@ internal static class PruebasSql
             await registro.GuardarAsync(final);
             await registro.GuardarAsync(final);
             salas.ConfirmarPersistencia(id, final.RevisionPersistencia);
+
             if (final.Jugadores.Any(jugador => !jugador.GanoRonda || !jugador.Corona || jugador.VictoriasSala != numeroRonda))
             {
                 throw new Exception("Las coronas o victorias no se conservaron entre rondas.");
@@ -214,12 +238,15 @@ internal static class PruebasSql
         var partidas = await db.Partidas.Where(partida => codigosRondas.Contains(partida.CodigoSala)).ToListAsync();
         var identificadores = partidas.Select(partida => partida.PartidaId).ToArray();
         var resultados = await db.Resultados.CountAsync(resultado => identificadores.Contains(resultado.PartidaId) && resultado.EsGanador);
+
         if (partidas.Count != 2 || resultados != 8)
         {
             throw new Exception("Se sobrescribieron resultados de rondas anteriores en SQL.");
         }
 
-        Console.WriteLine("OK SQL: dos rondas, ocho resultados, empates, coronas y victorias acumuladas sin sobrescribir históricos.");
+        Console.WriteLine(
+            "OK SQL: dos rondas, ocho resultados, empates, coronas y victorias acumuladas sin sobrescribir históricos."
+        );
     }
 
     private static void VerificarCatalogoReal(string cadena)

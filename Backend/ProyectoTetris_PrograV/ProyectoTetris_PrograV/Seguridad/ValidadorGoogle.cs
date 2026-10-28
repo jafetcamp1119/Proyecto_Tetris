@@ -1,8 +1,10 @@
 using Google.Apis.Auth;
+
 using Microsoft.Extensions.Options;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
+// Define la validación del ID token que Google entrega al cliente.
 public interface IValidadorGoogle
 {
     Task<GoogleJsonWebSignature.Payload> ValidarAsync(string idToken);
@@ -10,9 +12,11 @@ public interface IValidadorGoogle
 
 public class ValidadorGoogle(IOptions<OpcionesGoogle> opciones) : IValidadorGoogle
 {
+    // Pide a la biblioteca oficial de Google que compruebe firma, audiencia y vencimiento del ID token.
     public Task<GoogleJsonWebSignature.Payload> ValidarAsync(string idToken)
     {
         var idCliente = opciones.Value.IdClienteWeb;
+
         if (string.IsNullOrWhiteSpace(idCliente))
         {
             throw new InvalidOperationException("Configure Google:IdClienteWeb en el backend.");

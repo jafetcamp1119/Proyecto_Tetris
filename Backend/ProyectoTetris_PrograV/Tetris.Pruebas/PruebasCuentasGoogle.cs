@@ -1,10 +1,16 @@
+// Comprueba vínculos y recuperación de cuentas usando unidades de trabajo de prueba.
 using System.Text.Json;
+
 using AutoMapper;
+
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
+
 using LogicaJuego.Implementacions;
+
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+
 using ProyectoTetris_PrograV.Seguridad;
 
 internal static class PruebasCuentasGoogle
@@ -24,13 +30,18 @@ internal static class PruebasCuentasGoogle
             using var unidad = new UnidadMemoria();
             var acceso = new AccesoUsuarioLJ(unidad, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
             var invitado = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Invitada" }).Data!;
-            unidad.Estadisticas.Datos.Add(new EstadisticasJugador { UsuarioId = invitado.Usuario.UsuarioId, PuntuacionMaxima = 8500, PartidasGanadas = 3 });
+            unidad.Estadisticas.Datos.Add(
+                new EstadisticasJugador { UsuarioId = invitado.Usuario.UsuarioId, PuntuacionMaxima = 8500, PartidasGanadas = 3 }
+            );
             var perfil = acceso.VincularGoogle(invitado.Usuario.UsuarioId, "google-verificado-123", "https://example.com/avatar");
             Verificar(perfil.Success && perfil.Data!.GoogleVinculado);
             var recuperado = acceso.IngresarGoogle("google-verificado-123");
             Verificar(recuperado.Success && recuperado.Data!.Usuario.UsuarioId == invitado.Usuario.UsuarioId);
             Verificar(unidad.Usuarios.Datos.Count == 1 && recuperado.Data!.Usuario.NombreUsuario == "Invitada");
-            Verificar(unidad.Estadisticas.Datos.Single().PuntuacionMaxima == 8500 && unidad.Estadisticas.Datos.Single().PartidasGanadas == 3);
+            Verificar(
+                unidad.Estadisticas.Datos.Single().PuntuacionMaxima == 8500
+                && unidad.Estadisticas.Datos.Single().PartidasGanadas == 3
+            );
             Verificar(acceso.Recuperar(new TRecuperarSesion { Credencial = invitado.Credencial! }).Success);
             Verificar(!JsonSerializer.Serialize(perfil.Data).Contains("google-verificado-123"));
         });
@@ -42,8 +53,12 @@ internal static class PruebasCuentasGoogle
             var primero = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Uno" }).Data!;
             var segundo = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Dos" }).Data!;
             Verificar(acceso.VincularGoogle(primero.Usuario.UsuarioId, "sub-uno", null).Success);
-            Verificar(acceso.VincularGoogle(segundo.Usuario.UsuarioId, "sub-uno", null).CodigoError == "GoogleEnOtroPerfil");
-            Verificar(acceso.VincularGoogle(primero.Usuario.UsuarioId, "sub-dos", null).CodigoError == "GoogleYaVinculado");
+            Verificar(
+                acceso.VincularGoogle(segundo.Usuario.UsuarioId, "sub-uno", null).CodigoError == "GoogleEnOtroPerfil"
+            );
+            Verificar(
+                acceso.VincularGoogle(primero.Usuario.UsuarioId, "sub-dos", null).CodigoError == "GoogleYaVinculado"
+            );
             Verificar(unidad.Usuarios.Datos.Count == 2 && unidad.Usuarios.Datos[1].GoogleSub == null);
             Verificar(acceso.IngresarGoogle("sin-vincular").CodigoError == "GoogleSinVincular");
         });
@@ -55,13 +70,25 @@ internal static class PruebasCuentasGoogle
             var jugador = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Rescate" }).Data!;
             var anterior = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
             var codigo = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
-            Verificar(codigo.Length == 14 && CodigosRecuperacion.Normalizar(codigo)?.Length == 12 && unidad.Usuarios.Datos.Single().HashRecuperacion != codigo);
+            Verificar(
+                codigo.Length == 14 && CodigosRecuperacion.Normalizar(codigo)?.Length == 12
+                && unidad.Usuarios.Datos.Single().HashRecuperacion != codigo
+            );
             Verificar(!acceso.RecuperarConCodigo(anterior).Success);
             var recuperado = acceso.RecuperarConCodigo(codigo.ToLowerInvariant());
             Verificar(recuperado.Success && recuperado.Data!.Usuario.UsuarioId == jugador.Usuario.UsuarioId);
             Verificar(recuperado.Data!.Credencial != jugador.Credencial && recuperado.Data.SesionId != jugador.SesionId);
-            Verificar(recuperado.Data.CodigoRecuperacionNuevo?.Length == 14 && recuperado.Data.CodigoRecuperacionPorConfirmar);
-            Verificar(acceso.ConfirmarRecuperacion(recuperado.Data.Usuario.UsuarioId, recuperado.Data.SesionId, recuperado.Data.CodigoRecuperacionNuevo!).Success);
+            Verificar(
+                recuperado.Data.CodigoRecuperacionNuevo?.Length == 14
+                && recuperado.Data.CodigoRecuperacionPorConfirmar
+            );
+            Verificar(
+                acceso.ConfirmarRecuperacion(
+                recuperado.Data.Usuario.UsuarioId,
+                recuperado.Data.SesionId,
+                recuperado.Data.CodigoRecuperacionNuevo!
+            ).Success
+            );
             Verificar(!acceso.RecuperarConCodigo(codigo).Success);
             Verificar(!acceso.SesionVigente(jugador.SesionId, jugador.Usuario.UsuarioId));
             var vencido = acceso.GenerarRecuperacion(jugador.Usuario.UsuarioId).Data!;
@@ -86,6 +113,7 @@ internal static class PruebasCuentasGoogle
         prueba("La biblioteca oficial de Google rechaza un ID token inventado", () =>
         {
             var validador = new ValidadorGoogle(Options.Create(new OpcionesGoogle { IdClienteWeb = "prueba.apps.googleusercontent.com" }));
+
             try
             {
                 validador.ValidarAsync("token-inventado").GetAwaiter().GetResult();

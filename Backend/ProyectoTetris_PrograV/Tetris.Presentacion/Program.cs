@@ -1,11 +1,30 @@
 using System.Diagnostics;
+
 using Microsoft.Extensions.FileProviders;
+
 using Tetris.Presentacion;
 
-if (!OperatingSystem.IsWindows()) { throw new PlatformNotSupportedException("El iniciador de Visual Studio requiere Windows."); }
-if (args.Contains("--hijo-prueba")) { await Task.Delay(30000); return; }
-if (args.Contains("--padre-prueba")) { PruebasIniciador.CrearPadreDePrueba(args[1]); return; }
-if (args.Contains("--pruebas")) { await PruebasIniciador.EjecutarAsync(); return; }
+// Abre el panel local y coordina el iniciador de presentación en Windows.
+// Las opciones de prueba y verificación evitan el flujo normal de publicación.
+if (!OperatingSystem.IsWindows())
+{
+    throw new PlatformNotSupportedException("El iniciador de Visual Studio requiere Windows.");
+}
+if (args.Contains("--hijo-prueba"))
+{
+    await Task.Delay(30000);
+    return;
+}
+if (args.Contains("--padre-prueba"))
+{
+    PruebasIniciador.CrearPadreDePrueba(args[1]);
+    return;
+}
+if (args.Contains("--pruebas"))
+{
+    await PruebasIniciador.EjecutarAsync();
+    return;
+}
 var repositorio = RutasPresentacion.BuscarRepositorio();
 var temporal = Path.Combine(Path.GetTempPath(), "TetrisPresentacion", Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(temporal);
@@ -37,22 +56,38 @@ app.Use(async (contexto, siguiente) =>
 var panel = Path.Combine(repositorio, "frontend", "tetris-app", "presentacion");
 app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = new PhysicalFileProvider(panel) });
 app.UseStaticFiles(new StaticFileOptions { FileProvider = new PhysicalFileProvider(panel) });
-app.MapGet("/estado", () => {
+app.MapGet("/estado", () =>
+{
     if (args.Contains("--vista-previa"))
     {
-        return Results.Json(new { estado = "preparando", mensaje = "VISTA PREVIA LOCAL. No se inicio API, Cloudflare ni Firebase.", actualizadoUtc = DateTime.UtcNow });
+        return Results.Json(new
+        {
+            estado = "preparando",
+            mensaje = "VISTA PREVIA LOCAL. No se inicio API, Cloudflare ni Firebase.",
+            actualizadoUtc = DateTime.UtcNow
+        });
     }
+
     return Results.Json(EstadoPanel.Leer(archivoEstado));
 });
-app.MapGet("/logo.png", () => Results.File(Path.Combine(repositorio, "frontend", "tetris-app", "src", "assets", "icon", "tetris-logo-v2.png"), "image/png"));
+app.MapGet(
+"/logo.png",
+() => Results.File(
+Path.Combine(repositorio, "frontend", "tetris-app", "src", "assets", "icon", "tetris-logo-v2.png"),
+"image/png"
+)
+);
 app.Lifetime.ApplicationStopping.Register(iniciador.Dispose);
 await app.StartAsync();
 var direccionPanel = app.Urls.Single();
 Console.WriteLine("Panel local de presentacion: " + direccionPanel);
 if (args.Contains("--vista-previa"))
 {
-    File.WriteAllText(archivoEstado, System.Text.Json.JsonSerializer.Serialize(new {
-        estado = "preparando", mensaje = "VISTA PREVIA LOCAL. No se inicio API, Cloudflare ni Firebase.", actualizadoUtc = DateTime.UtcNow
+    File.WriteAllText(archivoEstado, System.Text.Json.JsonSerializer.Serialize(new
+    {
+        estado = "preparando",
+        mensaje = "VISTA PREVIA LOCAL. No se inicio API, Cloudflare ni Firebase.",
+        actualizadoUtc = DateTime.UtcNow
     }));
 }
 else

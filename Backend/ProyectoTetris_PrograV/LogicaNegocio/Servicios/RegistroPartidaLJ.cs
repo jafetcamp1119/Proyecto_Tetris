@@ -6,6 +6,8 @@ using Dominio.Juego;
 
 namespace LogicaJuego.Servicios;
 
+// Guarda el avance persistente de las rondas, sus resultados y las estadísticas.
+// No reconstruye los tableros activos cuando se reinicia el servidor.
 public class RegistroPartidaLJ : IRegistroPartidaLJ
 {
     private readonly IUnidadTrabajoEF unidad;
@@ -37,6 +39,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         await unidad.CompletarAsync(cancellationToken);
     }
 
+    // Marca como eliminados los participantes de una partida interrumpida.
     private void CancelarParticipantes(Partida partida)
     {
         foreach (var participante in BuscarParticipantes(partida))
@@ -48,6 +51,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         }
     }
 
+    // Retira resultados de una partida cancelada para no tratarlos como un final válido.
     private void EliminarResultadosProvisionales(Partida partida)
     {
         foreach (var resultado in BuscarResultados(partida))
@@ -56,6 +60,8 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         }
     }
 
+    // Busca la ronda histórica y guarda participantes, resultados y estadísticas en conjunto.
+    // Si la ronda ya tiene fecha final, evita contabilizarla otra vez.
     public async Task GuardarAsync(TSala sala, CancellationToken cancellationToken = default)
     {
         var codigoPartida = CodigoDeRonda(sala);
@@ -110,6 +116,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
     {
         // Identidad histórica independiente del código corto, que puede reutilizarse al cerrar una sala.
         var identificador = sala.Id.ToString("N")[..12];
+
         if (sala.NumeroRonda == 1)
         {
             return identificador;
@@ -118,6 +125,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         return identificador + "-" + sala.NumeroRonda;
     }
 
+    // Prepara el registro histórico usando el modo, creador y capacidad de la sala.
     private Partida CrearPartida(TSala sala)
     {
         var partida = new Partida
@@ -135,6 +143,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         return partida;
     }
 
+    // Copia fechas y estado; solo asigna GanadorId cuando existe un ganador único.
     private static void ActualizarPartida(Partida partida, TSala sala)
     {
         partida.Estado = sala.Estado.ToString();
@@ -145,6 +154,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         partida.GanadorId = sala.Ganadores.Length == 1 ? sala.Ganadores[0] : null;
     }
 
+    // Consulta los participantes persistidos; una partida todavía sin ID no tiene registros en SQL.
     private List<ParticipantesPartidum> BuscarParticipantes(Partida partida)
     {
         if (partida.PartidaId == 0)
@@ -155,6 +165,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         return unidad.TParticipante.Buscar(p => p.PartidaId == partida.PartidaId).Data!.ToList();
     }
 
+    // Consulta los resultados existentes para actualizar la ronda sin duplicarlos.
     private List<Resultado> BuscarResultados(Partida partida)
     {
         if (partida.PartidaId == 0)
@@ -165,6 +176,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         return unidad.TResultado.Buscar(r => r.PartidaId == partida.PartidaId).Data!.ToList();
     }
 
+    // Crea o actualiza los puntos, nivel y estado del participante en la ronda.
     private ParticipantesPartidum GuardarParticipante(
         Partida partida,
         List<ParticipantesPartidum> participantes,
@@ -231,6 +243,7 @@ public class RegistroPartidaLJ : IRegistroPartidaLJ
         return resultado;
     }
 
+    // Acumula una ronda finalizada y conserva los máximos de puntos y nivel del usuario.
     private void ActualizarEstadistica(TPuntuacion jugador, Resultado resultado)
     {
         var estadistica = unidad.TEstadistica.ObtenerEntidad(e => e.UsuarioId == jugador.UsuarioId).Data;

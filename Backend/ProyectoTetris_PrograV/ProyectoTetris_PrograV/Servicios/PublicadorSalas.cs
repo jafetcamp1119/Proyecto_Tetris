@@ -1,6 +1,8 @@
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
+
 using Microsoft.AspNetCore.SignalR;
+
 using ProyectoTetris_PrograV.Hubs;
 
 namespace ProyectoTetris_PrograV.Servicios;
@@ -12,6 +14,7 @@ public class PublicadorSalas
     public const string EventoEstado = "EstadoActualizado";
     public const string EventoVistaPrevia = "VistaPreviaActualizada";
 
+    // Construye el grupo que recibe únicamente la reserva de un jugador de la sala.
     public static string GrupoPrivado(Guid salaId, int usuarioId)
     {
         return $"{salaId}:jugador:{usuarioId}";
@@ -34,15 +37,18 @@ public class PublicadorSalas
         foreach (var jugador in estado.Jugadores)
         {
             var vista = salas.ObtenerSiguientePieza(estado.Id, jugador.UsuarioId);
+
             if (vista.Success)
             {
                 await hub.Clients.Group(GrupoPrivado(estado.Id, jugador.UsuarioId))
                     .SendAsync(EventoVistaPrevia, vista.Data!, cancelacion);
             }
         }
+
         await PublicarEventosAsync(cancelacion);
     }
 
+    // Envía eventos pendientes y retira del grupo público las conexiones indicadas.
     public async Task PublicarEventosAsync(CancellationToken cancelacion = default)
     {
         foreach (var evento in salas.TomarEventos())

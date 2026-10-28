@@ -1,7 +1,10 @@
-﻿param([Parameter(Mandatory = $true)][string]$UrlBackend)
-$ErrorActionPreference = 'Stop'
+# Valida un origen HTTPS de Quick Tunnel y lo escribe en la configuración pública local.
+# Actualiza también www si existe; este script no realiza el deploy.
+param([Parameter(Mandatory = $true)][string]$UrlBackend)$ErrorActionPreference = 'Stop'
 $direccion = $null
-if (-not [Uri]::TryCreate($UrlBackend, [UriKind]::Absolute, [ref]$direccion)) { throw 'La dirección no es válida.' }
+if (-not [Uri]::TryCreate($UrlBackend, [UriKind]::Absolute, [ref]$direccion)) {
+    throw 'La dirección no es válida.'
+}
 $ip = $null
 if ($direccion.Scheme -ne 'https' -or $direccion.UserInfo -or -not $direccion.IsDefaultPort -or
     $direccion.AbsolutePath -ne '/' -or $direccion.Query -or $direccion.Fragment -or
@@ -14,7 +17,9 @@ $raiz = Split-Path $PSScriptRoot -Parent
 if ($direccion.DnsSafeHost -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$') {
     throw 'El backend debe pertenecer a un Quick Tunnel de Cloudflare. Un dominio diferente requiere actualizar la lista permitida del proyecto.'
 }
-$texto = @{ urlBackend = $direccion.GetLeftPart([UriPartial]::Authority) } | ConvertTo-Json
+$texto = @{
+    urlBackend = $direccion.GetLeftPart([UriPartial]::Authority)
+} | ConvertTo-Json
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText((Join-Path $raiz 'src/assets/configuracion-publica.json'), $texto, $utf8)
 if (Test-Path (Join-Path $raiz 'www/index.html')) {

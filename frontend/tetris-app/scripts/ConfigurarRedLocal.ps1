@@ -1,9 +1,11 @@
+# Detecta la IPv4 privada de desarrollo y actualiza la conexión y la excepción HTTP debug.
+# No abre el firewall ni genera una APK.
 ﻿param([string]$Interfaz)
 
 $ErrorActionPreference = 'Stop'
 $redes = @(Get-NetIPConfiguration | Where-Object {
-    $_.NetAdapter.Status -eq 'Up' -and $_.IPv4DefaultGateway -and $_.IPv4Address
-})
+        $_.NetAdapter.Status -eq 'Up' -and $_.IPv4DefaultGateway -and $_.IPv4Address
+    })
 if ($Interfaz) {
     $redes = @($redes | Where-Object InterfaceAlias -eq $Interfaz)
 }
@@ -13,7 +15,7 @@ if ($redes.Count -ne 1) {
 $direccion = $redes[0].IPv4Address.IPAddress | Select-Object -First 1
 $octetos = ([System.Net.IPAddress]::Parse($direccion)).GetAddressBytes()
 $privada = $octetos[0] -eq 10 -or ($octetos[0] -eq 192 -and $octetos[1] -eq 168) -or
-    ($octetos[0] -eq 172 -and $octetos[1] -ge 16 -and $octetos[1] -le 31)
+($octetos[0] -eq 172 -and $octetos[1] -ge 16 -and $octetos[1] -le 31)
 if (-not $privada) {
     throw 'La conexión seleccionada no tiene una IPv4 privada de red local.'
 }

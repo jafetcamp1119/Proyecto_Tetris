@@ -1,10 +1,15 @@
+// Contiene escenarios opcionales de identidad que requieren SQL Server.
 using AccesoDatos;
 using AccesoDatos.Contexto;
+
 using AutoMapper;
+
 using Dominio.DTO;
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
+
 using LogicaJuego.Implementacions;
+
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,12 +22,15 @@ internal static class PruebasIdentidadSql
         var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB")
             ?? throw new InvalidOperationException("Falta la conexión a la base temporal.");
         var conexion = new SqlConnectionStringBuilder(cadena);
+
         if (!conexion.InitialCatalog.StartsWith("TetrisValidacion_", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Estas pruebas solo permiten bases TetrisValidacion_.");
         }
 
-        using var fabricaRegistro = LoggerFactory.Create(opciones => { });
+        using var fabricaRegistro = LoggerFactory.Create(opciones =>
+        {
+        });
         var configuracion = new MapperConfiguration(opciones => opciones.AddProfile<AutoMapperProfile>(), fabricaRegistro);
         var mapper = configuracion.CreateMapper();
         var opciones = new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer(cadena).Options;
@@ -39,30 +47,51 @@ internal static class PruebasIdentidadSql
         })).ToArray();
         salida.SetResult();
         var respuestas = await Task.WhenAll(tareas);
-        Verificar(respuestas.Count(respuesta => respuesta.Success) == 1, "un solo registro entre ocho dispositivos simultáneos");
-        Verificar(respuestas.Count(respuesta => respuesta.CodigoError == "NombreOcupado") == 7, "los otros registros se convierten en conflicto");
+        Verificar(
+            respuestas.Count(respuesta => respuesta.Success) == 1,
+            "un solo registro entre ocho dispositivos simultáneos"
+        );
+        Verificar(
+            respuestas.Count(respuesta => respuesta.CodigoError == "NombreOcupado") == 7,
+            "los otros registros se convierten en conflicto"
+        );
 
         await using var db = new TetrisDBContext(opciones);
         using var unidadPrueba = new UnidadTrabajoEF(db);
         var servicio = new AccesoUsuarioLJ(unidadPrueba, mapper, NullLogger<AccesoUsuarioLJ>.Instance, CredencialesPrueba.Protector);
         var sesion = respuestas.Single(respuesta => respuesta.Success).Data!;
         var credencial = await db.Set<CredencialDispositivo>().SingleAsync(dato => dato.UsuarioId == sesion.Usuario.UsuarioId);
-        Verificar(credencial.HashCredencial != sesion.Credencial && credencial.HashCredencial.Length == 64, "SQL solo conserva el hash");
+        Verificar(
+            credencial.HashCredencial != sesion.Credencial && credencial.HashCredencial.Length == 64,
+            "SQL solo conserva el hash"
+        );
         var usuario = await db.Usuarios.SingleAsync(dato => dato.UsuarioId == sesion.Usuario.UsuarioId);
         Verificar(usuario.Correo == null && usuario.PasswordHash == null, "sin correo ni contraseña en SQL");
-        Verificar(!servicio.NombreDisponible(" " + nombre.ToLowerInvariant() + " ").Data, "normalización calculada de SQL coincide con consultas C#");
-        Verificar(servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success, "recuperación real desde SQL");
+        Verificar(
+            !servicio.NombreDisponible(" " + nombre.ToLowerInvariant() + " ").Data,
+            "normalización calculada de SQL coincide con consultas C#"
+        );
+        Verificar(
+            servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success,
+            "recuperación real desde SQL"
+        );
         var otro = servicio.Registrar(new TRegistroUsuario { NombreUsuario = "Otro_" + nombre });
         Verificar(otro.Success, "varios correos NULL aceptados");
         credencial.FechaCreacionUtc = DateTime.UtcNow.AddDays(-2);
         credencial.ExpiraEnUtc = DateTime.UtcNow.AddSeconds(-1);
         await db.SaveChangesAsync();
-        Verificar(!servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success, "credencial vencida rechazada");
+        Verificar(
+            !servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success,
+            "credencial vencida rechazada"
+        );
         credencial.ExpiraEnUtc = DateTime.UtcNow.AddDays(1);
         await db.SaveChangesAsync();
         usuario.Activo = false;
         await db.SaveChangesAsync();
-        Verificar(!servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success, "perfil inactivo rechazado");
+        Verificar(
+            !servicio.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! }).Success,
+            "perfil inactivo rechazado"
+        );
         usuario.Activo = true;
         await db.SaveChangesAsync();
         servicio.Revocar(sesion.SesionId, usuario.UsuarioId);
@@ -71,6 +100,7 @@ internal static class PruebasIdentidadSql
         // Prueba directamente el índice sin pasar por la comprobación previa de C#.
         var directo = new Usuario { NombreUsuario = nombre.ToLowerInvariant(), FechaRegistro = DateTime.UtcNow, Activo = true };
         db.Usuarios.Add(directo);
+
         try
         {
             await db.SaveChangesAsync();

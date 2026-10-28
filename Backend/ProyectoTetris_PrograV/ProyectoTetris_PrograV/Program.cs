@@ -1,22 +1,27 @@
-using ProyectoTetris_PrograV;
 using AccesoDatos;
 using AccesoDatos.Contexto;
+
 using Dominio.DTO;
-using Dominio.Entidades;
 using Dominio.InterfazAD;
 using Dominio.InterfazJuego;
 using Dominio.InterfazLJ;
 using Dominio.Juego;
+
 using LogicaJuego;
 using LogicaJuego.Implementacions;
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
+
 using Microsoft.EntityFrameworkCore;
+
+using ProyectoTetris_PrograV;
 using ProyectoTetris_PrograV.Hubs;
 using ProyectoTetris_PrograV.Seguridad;
 using ProyectoTetris_PrograV.Servicios;
+
 using Utilitarios;
 
+// Prepara la API y registra sus servicios. No ejecuta migraciones ni crea el esquema SQL.
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseDefaultServiceProvider(opciones =>
 {
@@ -27,9 +32,12 @@ builder.Services.AgregarApiTetris();
 builder.Services.AgregarConexionPublicada();
 
 builder.Services.AgregarSeguridad(builder.Configuration, builder.Environment);
+// Configura EF con la conexión privada y el proveedor SQL Server.
+// Cada alcance recibe su contexto; las salas compartidas no lo retienen.
 builder.Services.AddDbContext<TetrisDBContext>(opciones =>
 {
     var conexion = builder.Configuration.GetConnectionString("TetrisDB");
+
     if (string.IsNullOrWhiteSpace(conexion))
     {
         throw new InvalidOperationException("Configure ConnectionStrings:TetrisDB.");
@@ -83,7 +91,10 @@ app.MapHub<JuegoHub>("/hubs/juego", opciones =>
 });
 app.MapGet("/salud", () =>
 {
-    return Results.Ok(new { Estado = "Servidor Tetris activo" });
+    return Results.Ok(new
+    {
+        Estado = "Servidor Tetris activo"
+    });
 });
 app.Run();
 

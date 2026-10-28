@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
+
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
-using Utilitarios;
+
 using LogicaJuego.Motor;
+
+using Utilitarios;
 
 namespace LogicaJuego.Servicios;
 
@@ -17,6 +20,7 @@ public class SalaLJ : ISalaLJ
 
     private readonly ConcurrentQueue<TEventoSala> eventos = new();
     private readonly TimeProvider reloj;
+
     private DateTime Ahora
     {
         get
@@ -33,12 +37,14 @@ public class SalaLJ : ISalaLJ
     private readonly ControlPausas pausas;
     private readonly ControlEfectos efectos;
     private readonly CodigosSala codigosSala = new();
+    // Conserva las salas activas de esta instancia; cada sala protege sus cambios con su propio cerrojo.
     private readonly ConcurrentDictionary<Guid, SalaMemoria> _salas = new();
 
     public SalaLJ(IMotorJuego motor) : this(motor, new OpcionesPausa(), null)
     {
     }
 
+    // Recibe las reglas y servicios compartidos. Las pruebas pueden proporcionar reloj y azar controlados.
     public SalaLJ(IMotorJuego motor, OpcionesPausa opcionesPausa, ICatalogoPiezasEspeciales? catalogoPiezas,
         TimeProvider? reloj = null, OpcionesEfectos? opcionesEfectos = null, GeneradorPiezas? generador = null)
     {
@@ -54,6 +60,8 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Creación y configuración ----------
 
+    // Valida modo, capacidad y configuración antes de registrar la sala en memoria.
+    // Solitario no recibe código; las salas multijugador reservan uno de seis caracteres.
     public Respuesta<TSala> Crear(int usuarioId, string nombre, TCrearSala datos)
     {
         if (usuarioId <= 0 || string.IsNullOrWhiteSpace(nombre) || !Enum.IsDefined(datos.Modo))
@@ -93,13 +101,16 @@ public class SalaLJ : ISalaLJ
         sala.Jugadores.Add(new JugadorSala(usuarioId, nombre));
 
         sala.Privada = datos.Privada && !esIndividual;
+
         if (!esIndividual)
         {
             var codigo = codigosSala.Reservar(sala.Id);
+
             if (codigo == null)
             {
                 return Respuesta<TSala>.Fail("No se pudo generar el código de la sala. Intente de nuevo.");
             }
+
             sala.CodigoIngreso = codigo;
         }
 
@@ -107,24 +118,30 @@ public class SalaLJ : ISalaLJ
         return Respuesta<TSala>.Ok(proyector.Sala(sala));
     }
 
+    // Devuelve solo la reserva del jugador autorizado, sin revelar las piezas de los demás.
     public Respuesta<TVistaPreviaPrivada> ObtenerSiguientePieza(Guid salaId, int usuarioId)
     {
         if (!_salas.TryGetValue(salaId, out var sala))
         {
             return Respuesta<TVistaPreviaPrivada>.Fail("Sala no encontrada.");
         }
+
         lock (sala.Cerrojo)
         {
             var jugador = sala.BuscarJugador(usuarioId);
+
             if (jugador == null || jugador.Abandono)
             {
                 return Respuesta<TVistaPreviaPrivada>.Fail("No pertenecés a esta sala.");
             }
+
             PiezaPreparada? preparada = null;
+
             if (sala.Estado == EstadoSala.EnCurso && !jugador.Perdido)
             {
                 preparada = sala.Modo == ModoJuego.Compartido ? jugador.SiguientePieza : jugador.Tablero?.SiguientePieza;
             }
+
             var pieza = preparada == null ? null : new TPiezaSiguiente(
                 preparada.TipoPieza,
                 FormasPieza.Bloques(preparada.TipoPieza).Select(bloque => new TCelda(bloque.F, bloque.C)).ToArray(),
@@ -209,6 +226,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Rechaza cambios de configuración de otro usuario o de una partida que ya inició.
     private static string? ValidarCreadorEnEspera(SalaMemoria sala, int usuarioId)
     {
         if (sala.Creador != usuarioId)
@@ -224,6 +242,7 @@ public class SalaLJ : ISalaLJ
         return null;
     }
 
+    // Reúne especiales, formas normales, velocidad y puntos después de validar cada parte.
     private Respuesta<ConfiguracionPiezas> ConstruirConfiguracionCompleta(
         TConfiguracionPiezas especiales,
         string[]? piezasNormales,
@@ -260,6 +279,7 @@ public class SalaLJ : ISalaLJ
             Combinar(configuracionEspeciales.Data!, formas.Data!, velocidad, valoresPuntos.Data!));
     }
 
+    // Crea una configuración de partida con los valores ya comprobados.
     private static ConfiguracionPiezas Combinar(
         ConfiguracionPiezas especiales,
         IReadOnlyList<int> formas,
@@ -306,6 +326,7 @@ public class SalaLJ : ISalaLJ
         return Respuesta<IReadOnlyList<int>>.Ok(indices.ToArray());
     }
 
+    // Comprueba que los cuatro puntajes base estén dentro del rango admitido por el juego.
     private static Respuesta<IReadOnlyList<int>> ConvertirPuntos(TPuntosLineas puntos)
     {
         var valores = new[] { puntos.UnaLinea, puntos.DosLineas, puntos.TresLineas, puntos.CuatroLineas };
@@ -366,6 +387,7 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Consulta e ingreso ----------
 
+    // Copia las salas públicas en espera que todavía admiten participantes.
     public TSalaPublica[] ListarPublicas()
     {
         var publicas = new List<TSalaPublica>();
@@ -384,6 +406,7 @@ public class SalaLJ : ISalaLJ
         return publicas.ToArray();
     }
 
+    // Decide si la sala puede aparecer en el listado para nuevos jugadores.
     private static bool EsPublicaYDisponible(SalaMemoria sala)
     {
         var esperando = sala.Estado == EstadoSala.Esperando;
@@ -393,6 +416,7 @@ public class SalaLJ : ISalaLJ
         return !sala.Privada && esperando && hayEspacio && admiteInvitados;
     }
 
+    // Consulta una copia del estado después de comprobar la pertenencia del usuario a la sala.
     public Respuesta<TSala> Obtener(Guid salaId, int usuarioId)
     {
         return Ejecutar(salaId, usuarioId, (_, _) => null);
@@ -436,6 +460,7 @@ public class SalaLJ : ISalaLJ
         return Respuesta<TSala>.Fail("Código inválido.");
     }
 
+    // Busca la sala asociada al código reservado y aplica las validaciones de ingreso.
     private Respuesta<TSala> UnirsePorCodigoIngreso(string codigo, int usuarioId, string nombre)
     {
         var encontrada = codigosSala.TryObtenerSala(codigo, out var salaId);
@@ -451,6 +476,7 @@ public class SalaLJ : ISalaLJ
         }
     }
 
+    // Mantiene la entrada por códigos públicos antiguos sin abrir salas individuales.
     private Respuesta<TSala> UnirsePorCodigoPublico(string codigo, int usuarioId, string nombre)
     {
         var sala = _salas.Values.FirstOrDefault(s => s.Id.ToString("N").StartsWith(
@@ -490,6 +516,8 @@ public class SalaLJ : ISalaLJ
         return Respuesta<TSala>.Ok(proyector.Sala(sala));
     }
 
+    // Busca y bloquea la sala, actualiza sus plazos y comprueba al participante.
+    // Devuelve el error de la acción o una copia del estado resultante.
     private Respuesta<TSala> Ejecutar(Guid id, int usuarioId, Func<SalaMemoria, JugadorSala, string?> accion)
     {
         if (!_salas.TryGetValue(id, out var sala))
@@ -524,6 +552,7 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Preparación e inicio ----------
 
+    // Cambia la confirmación de listo únicamente mientras la sala está en espera.
     public Respuesta<TSala> Preparar(Guid salaId, int usuarioId, bool listo)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -539,6 +568,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Comprueba al creador y a los participantes antes de crear los tableros de la ronda.
     public Respuesta<TSala> Iniciar(Guid salaId, int usuarioId)
     {
         return Ejecutar(salaId, usuarioId, (sala, _) =>
@@ -579,6 +609,7 @@ public class SalaLJ : ISalaLJ
             }
 
             sala.Jugadores.RemoveAll(jugador => jugador.Abandono);
+
             foreach (var jugador in sala.Jugadores)
             {
                 jugador.Listo = false;
@@ -591,6 +622,7 @@ public class SalaLJ : ISalaLJ
                 jugador.SiguientePieza = null;
                 jugador.Efectos.Clear();
                 jugador.Desconexion = null;
+
                 if (jugador.Conexiones.Count == 0)
                 {
                     jugador.Desconexion = Ahora;
@@ -613,6 +645,8 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Exige creador, sala en espera, mínimo de participantes y jugadores listos.
+    // En multijugador también exige sus conexiones antes de empezar.
     private static string? ValidarInicio(SalaMemoria sala, int usuarioId)
     {
         if (sala.Creador != usuarioId)
@@ -666,6 +700,8 @@ public class SalaLJ : ISalaLJ
         return null;
     }
 
+    // Prepara un tablero común en Compartido o uno por jugador en los otros modos.
+    // Competitivo descarta las piezas especiales.
     private void CrearTableros(SalaMemoria sala)
     {
         if (sala.Modo == ModoJuego.Competitivo)
@@ -681,12 +717,14 @@ public class SalaLJ : ISalaLJ
         {
             sala.Compartido = motor.CrearTablero(sala.Piezas);
             sala.Compartido.EsCompartido = true;
+
             foreach (var jugador in sala.Jugadores)
             {
                 jugador.SiguientePieza = jugador == sala.Jugadores[0]
                     ? sala.Compartido.SiguientePieza ?? generador.PrepararPieza(sala.Piezas)
                     : generador.PrepararPieza(sala.Piezas);
             }
+
             sala.Compartido.SiguientePieza = null;
             return;
         }
@@ -700,6 +738,8 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Movimientos ----------
 
+    // Rechaza movimientos fuera de turno, durante una pausa o con secuencia repetida.
+    // Solo después aplica al motor la acción autorizada del jugador.
     public Respuesta<TSala> Mover(Guid salaId, int usuarioId, TMovimiento datos)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -732,6 +772,8 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Atribuye al jugador los puntos y filas de esta acción del motor.
+    // Actualiza el nivel común, los efectos, el cambio de turno y el posible final.
     private void AplicarPaso(
         SalaMemoria sala,
         JugadorSala jugador,
@@ -742,21 +784,27 @@ public class SalaLJ : ISalaLJ
         var puntos = tablero.Puntuacion;
         var lineas = tablero.Lineas;
         var secuenciaEvento = tablero.EventoSecuencia;
+
         if (sala.Compartido != null)
         {
             // El motor comprueba la aparición con la pieza anunciada al próximo jugador.
             var proximo = ProximoTurno(sala);
             tablero.SiguientePieza = sala.Jugadores[proximo].SiguientePieza;
         }
+
         var paso = accion();
 
         jugador.Puntos += tablero.Puntuacion - puntos;
         jugador.Lineas += tablero.Lineas - lineas;
         jugador.Nivel = Math.Max(jugador.Nivel, tablero.Nivel);
+
         if (sala.Compartido != null)
         {
             // Las líneas normales ya se acumulan en el único tablero de la sala.
-            foreach (var participante in sala.Jugadores) { participante.Nivel = tablero.Nivel; }
+            foreach (var participante in sala.Jugadores)
+            {
+                participante.Nivel = tablero.Nivel;
+            }
         }
 
         if (paso.Cambio)
@@ -820,28 +868,35 @@ public class SalaLJ : ISalaLJ
         sala.Version++;
     }
 
+    // Recorre circularmente los participantes y busca al siguiente que no esté eliminado.
     private static int ProximoTurno(SalaMemoria sala)
     {
         var turno = sala.Turno;
+
         for (var i = 0; i < sala.Jugadores.Count; i++)
         {
             turno = (turno + 1) % sala.Jugadores.Count;
+
             if (!sala.Jugadores[turno].Perdido)
             {
                 return turno;
             }
         }
+
         return sala.Turno;
     }
 
+    // Activa la pieza reservada del siguiente jugador y sortea su nueva reserva privada.
     private void SiguienteTurno(SalaMemoria sala)
     {
         sala.Turno = ProximoTurno(sala);
         var jugador = sala.Jugadores[sala.Turno];
+
         if (jugador.Perdido || sala.Compartido == null || jugador.SiguientePieza == null)
         {
             return;
         }
+
         var preparada = jugador.SiguientePieza;
         sala.Compartido.TipoPieza = preparada.TipoPieza;
         sala.Compartido.PiezaSecuencia++;
@@ -853,6 +908,8 @@ public class SalaLJ : ISalaLJ
         jugador.SiguientePieza = generador.PrepararPieza(sala.Piezas);
     }
 
+    // Finaliza por eliminación total, supervivencia o meta según el modo.
+    // Calcula ganadores y conserva todos los empates con mayor puntuación.
     private void FinalizarSiCorresponde(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Estado != EstadoSala.EnCurso)
@@ -908,6 +965,7 @@ public class SalaLJ : ISalaLJ
         pausas.CancelarSiTermino(sala, ahora);
     }
 
+    // Retira al participante; si abandona el creador, cierra la sala para todos.
     public Respuesta<TSala> Abandonar(Guid salaId, int usuarioId)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -935,11 +993,16 @@ public class SalaLJ : ISalaLJ
 
             sala.Version++;
             eventos.Enqueue(new TEventoSala("JugadorAbandono", sala.Id,
-                new { SalaId = sala.Id, UsuarioId = usuarioId }, conexionesRetirar));
+                new
+                {
+                    SalaId = sala.Id,
+                    UsuarioId = usuarioId
+                }, conexionesRetirar));
             return null;
         });
     }
 
+    // Cancela la sala si aún no terminó y retira tableros, conexiones y código de ingreso.
     private void CerrarSala(SalaMemoria sala, string motivo, DateTime ahora)
     {
         if (sala.Estado != EstadoSala.Finalizada)
@@ -955,7 +1018,11 @@ public class SalaLJ : ISalaLJ
         sala.Version++;
         sala.Revision++;
         eventos.Enqueue(new TEventoSala("SalaCerrada", sala.Id,
-            new { SalaId = sala.Id, Motivo = motivo },
+            new
+            {
+                SalaId = sala.Id,
+                Motivo = motivo
+            },
             sala.Jugadores.SelectMany(jugador => jugador.Conexiones).ToArray()));
 
         foreach (var jugador in sala.Jugadores)
@@ -970,6 +1037,7 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Pausa ----------
 
+    // Pasa la solicitud al control de pausas dentro del bloqueo de la sala.
     public Respuesta<TSala> SolicitarPausa(Guid salaId, int usuarioId)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -978,6 +1046,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Registra el voto del participante y permite que el servidor resuelva la solicitud.
     public Respuesta<TSala> VotarPausa(Guid salaId, int usuarioId, bool aceptar)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -986,6 +1055,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Solicita reanudar una partida individual; las pausas multijugador terminan por su plazo.
     public Respuesta<TSala> Reanudar(Guid salaId, int usuarioId)
     {
         return Ejecutar(salaId, usuarioId, (sala, _) =>
@@ -994,6 +1064,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Retira los eventos pendientes para que la API los publique una sola vez.
     public TEventoSala[] TomarEventos()
     {
         var pendientes = new List<TEventoSala>(pausas.TomarEventos());
@@ -1006,22 +1077,33 @@ public class SalaLJ : ISalaLJ
         return pendientes.ToArray();
     }
 
+    // Busca la sala más reciente en espera o en curso donde el usuario no haya abandonado.
     public Guid? BuscarActiva(int usuarioId)
     {
         foreach (var sala in _salas.Values.OrderByDescending(sala => sala.Creada))
         {
             lock (sala.Cerrojo)
             {
-                if (sala.Estado is not (EstadoSala.EnCurso or EstadoSala.Esperando)) { continue; }
+                if (sala.Estado is not (EstadoSala.EnCurso or EstadoSala.Esperando))
+                {
+                    continue;
+                }
+
                 var jugador = sala.Jugadores.Find(jugador => jugador.Id == usuarioId);
-                if (jugador != null && !jugador.Abandono) { return sala.Id; }
+
+                if (jugador != null && !jugador.Abandono)
+                {
+                    return sala.Id;
+                }
             }
         }
+
         return null;
     }
 
     // ---------- Conexiones ----------
 
+    // Registra la conexión autorizada y cancela el plazo de desconexión del jugador.
     public Respuesta<TSala> Conectar(Guid salaId, int usuarioId, string conexionId)
     {
         return Ejecutar(salaId, usuarioId, (sala, jugador) =>
@@ -1038,6 +1120,7 @@ public class SalaLJ : ISalaLJ
         });
     }
 
+    // Comprueba que la conexión esté registrada para ese participante de la sala.
     public bool ConexionAutorizada(Guid salaId, int usuarioId, string conexionId)
     {
         if (!_salas.TryGetValue(salaId, out var sala))
@@ -1052,6 +1135,7 @@ public class SalaLJ : ISalaLJ
         }
     }
 
+    // Retira una conexión de las salas y devuelve las copias que cambiaron.
     public TSala[] Desconectar(string conexionId)
     {
         var cambios = new List<TSala>();
@@ -1070,6 +1154,7 @@ public class SalaLJ : ISalaLJ
         return cambios.ToArray();
     }
 
+    // Inicia el plazo de reconexión solo cuando el jugador se queda sin conexiones.
     private bool QuitarConexion(SalaMemoria sala, string conexionId)
     {
         var cambio = false;
@@ -1100,6 +1185,7 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Reloj del servidor ----------
 
+    // Recorre las salas con el reloj del servidor y devuelve únicamente las que cambiaron.
     public TSala[] Avanzar(DateTime ahora)
     {
         var actualizadas = new List<TSala>();
@@ -1136,6 +1222,7 @@ public class SalaLJ : ISalaLJ
         return actualizadas.ToArray();
     }
 
+    // Actualiza pausas, desconexiones y efectos antes de permitir el descenso automático.
     private void AvanzarSalaEnCurso(SalaMemoria sala, DateTime ahora)
     {
         pausas.Actualizar(sala, ahora);
@@ -1152,12 +1239,14 @@ public class SalaLJ : ISalaLJ
         }
     }
 
+    // Quita la sala de memoria y libera su código para futuras salas.
     private void RetirarSala(SalaMemoria sala)
     {
         _salas.TryRemove(sala.Id, out _);
         codigosSala.Liberar(sala.CodigoIngreso, sala.Id);
     }
 
+    // Comprueba vencimiento o cierre; conserva los finales cuyo guardado sigue pendiente.
     private static bool PuedeRetirarse(SalaMemoria sala, DateTime ahora)
     {
         var esperaVencida = sala.Estado == EstadoSala.Esperando &&
@@ -1175,6 +1264,8 @@ public class SalaLJ : ISalaLJ
         return esperaVencida || finalGuardado || cerradaGuardada;
     }
 
+    // Aplica el plazo de 30 segundos. Si vence el creador, cierra la sala;
+    // los demás salen de la espera o quedan eliminados de la partida.
     private void ActualizarDesconexiones(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Estado != EstadoSala.EnCurso && sala.Estado != EstadoSala.Esperando)
@@ -1208,10 +1299,15 @@ public class SalaLJ : ISalaLJ
 
             sala.Version++;
             eventos.Enqueue(new TEventoSala("JugadorAbandono", sala.Id,
-                new { SalaId = sala.Id, UsuarioId = jugador.Id }));
+                new
+                {
+                    SalaId = sala.Id,
+                    UsuarioId = jugador.Id
+                }));
         }
     }
 
+    // Hace caer los tableros individuales cuyo intervalo ya se cumplió.
     private void AvanzarTableros(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Compartido != null)
@@ -1232,6 +1328,7 @@ public class SalaLJ : ISalaLJ
         }
     }
 
+    // Hace caer el tablero común con el intervalo y los efectos del jugador de turno.
     private void AvanzarTableroCompartido(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Jugadores[sala.Turno].Desconexion.HasValue
@@ -1249,6 +1346,7 @@ public class SalaLJ : ISalaLJ
             ahora);
     }
 
+    // Convierte la velocidad del tablero y su factor temporal en el tiempo entre descensos.
     private static TimeSpan Intervalo(TableroJuego tablero, int factor = 1)
     {
         return TimeSpan.FromMilliseconds(Math.Max(1, tablero.IntervaloCaidaMs / factor));
@@ -1256,6 +1354,7 @@ public class SalaLJ : ISalaLJ
 
     // ---------- Persistencia ----------
 
+    // Copia las salas con una revisión más nueva que la última confirmada en SQL.
     public TSala[] PendientesPersistencia()
     {
         var pendientes = new List<TSala>();
@@ -1274,6 +1373,7 @@ public class SalaLJ : ISalaLJ
         return pendientes.ToArray();
     }
 
+    // Confirma solo la revisión guardada sin ocultar cambios que ocurrieron después.
     public void ConfirmarPersistencia(Guid salaId, long revision)
     {
         if (_salas.TryGetValue(salaId, out var sala))

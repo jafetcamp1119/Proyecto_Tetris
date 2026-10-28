@@ -6,7 +6,7 @@ import { configuracion } from './configuracion';
 
 export const environment = {
   production: false,
-  ...configuracion
+  ...configuracion,
 };
 
 /*

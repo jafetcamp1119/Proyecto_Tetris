@@ -1,3 +1,4 @@
+# Prepara comprobaciones de usuarios y rondas que utilizan SQL. No forma parte de las pruebas en memoria.
 param(
     [string]$Servidor = 'JAFET\SQLEXPRESS'
 )

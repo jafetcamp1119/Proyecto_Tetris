@@ -14,6 +14,7 @@ internal sealed class ProyectorSala
         this.motor = motor;
     }
 
+    // Construye una copia completa del estado público sin incluir las próximas piezas privadas.
     public TSala Sala(SalaMemoria sala)
     {
         var jugadores = ProyectarJugadores(sala);
@@ -59,7 +60,10 @@ internal sealed class ProyectorSala
             return null;
         }
 
-        return sala.UltimoEfecto with { CeldasEliminadas = sala.UltimoEfecto.CeldasEliminadas.ToArray() };
+        return sala.UltimoEfecto with
+        {
+            CeldasEliminadas = sala.UltimoEfecto.CeldasEliminadas.ToArray()
+        };
     }
 
     private static string[] ProyectarPiezasNormales(ConfiguracionPiezas piezas)
@@ -80,6 +84,7 @@ internal sealed class ProyectorSala
         };
     }
 
+    // Entrega solo los datos necesarios para listar una sala disponible.
     public TSalaPublica SalaPublica(SalaMemoria sala)
     {
         var creador = sala.BuscarJugador(sala.Creador);
@@ -94,6 +99,7 @@ internal sealed class ProyectorSala
             sala.Piezas.EspecialesActivas);
     }
 
+    // Copia votos y fechas del servidor para mostrar el estado de la solicitud.
     public TPausa Pausa(SalaMemoria sala, DateTime ahora, string? detalle)
     {
         var pausa = sala.Pausa;
@@ -186,6 +192,7 @@ internal sealed class ProyectorSala
         return jugadores.ToArray();
     }
 
+    // Asigna primer lugar a los ganadores y ordena los demás por puntuación.
     private static int CalcularPosicion(SalaMemoria sala, JugadorSala jugador)
     {
         if (sala.Ganadores.Contains(jugador.Id))
@@ -203,6 +210,7 @@ internal sealed class ProyectorSala
         return finalizada ? sala.Ganadores.ToArray() : [];
     }
 
+    // Copia el tablero común o los tableros individuales mediante el motor.
     private TTablero[] ProyectarTableros(SalaMemoria sala)
     {
         var tableros = new List<TTablero>();

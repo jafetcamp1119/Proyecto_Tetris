@@ -1,11 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using Dominio.EntidadesTipadas;
+
 using Utilitarios;
 
 namespace Tetris.Cliente.Servicios;
 
+// Ofrece un cliente HTTP en C# para la API y adjunta el token de la sesión.
 public class TetrisApi : ITetrisApi
 {
     private readonly HttpClient http;
@@ -23,9 +26,12 @@ public class TetrisApi : ITetrisApi
         this.http = http;
     }
 
+    // Construye la solicitud con JSON y Bearer y convierte errores HTTP en Respuesta.
+    // Respeta la cancelación que recibe del consumidor.
     private async Task<Respuesta<T>> Enviar<T>(HttpMethod metodo, string ruta, object? datos, CancellationToken ct)
     {
         using var solicitud = new HttpRequestMessage(metodo, ruta);
+
         if (datos != null)
         {
             solicitud.Content = JsonContent.Create(datos, datos.GetType(), options: Json);
@@ -37,6 +43,7 @@ public class TetrisApi : ITetrisApi
         }
 
         using var respuesta = await http.SendAsync(solicitud, ct);
+
         if (respuesta.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             return Respuesta<T>.Fail("Inicie sesión para continuar.");
@@ -50,6 +57,7 @@ public class TetrisApi : ITetrisApi
         try
         {
             var resultado = await respuesta.Content.ReadFromJsonAsync<Respuesta<T>>(Json, ct);
+
             if (resultado == null)
             {
                 return Respuesta<T>.Fail("Respuesta vacía del servidor.");
@@ -68,6 +76,7 @@ public class TetrisApi : ITetrisApi
         }
     }
 
+    // Registra la cuenta y conserva el token si el servidor acepta el ingreso.
     public async Task<Respuesta<TAutenticacion>> RegistrarAsync(TRegistroUsuario datos, CancellationToken ct = default)
     {
         var respuesta = await Enviar<TAutenticacion>(HttpMethod.Post, "api/usuarios/registrar", datos, ct);
@@ -75,6 +84,7 @@ public class TetrisApi : ITetrisApi
         return respuesta;
     }
 
+    // Recupera la cuenta y conserva el token de la nueva sesión.
     public async Task<Respuesta<TAutenticacion>> RecuperarAsync(TRecuperarSesion datos, CancellationToken ct = default)
     {
         var respuesta = await Enviar<TAutenticacion>(HttpMethod.Post, "api/usuarios/recuperar", datos, ct);
@@ -82,6 +92,7 @@ public class TetrisApi : ITetrisApi
         return respuesta;
     }
 
+    // Reemplaza el token local únicamente ante una autenticación exitosa.
     private void GuardarToken(Respuesta<TAutenticacion> respuesta)
     {
         if (respuesta.Success && respuesta.Data != null)
@@ -90,6 +101,7 @@ public class TetrisApi : ITetrisApi
         }
     }
 
+    // Solicita cerrar la sesión y borra el token cuando el servidor confirma el cierre.
     public async Task LogoutAsync(CancellationToken ct = default)
     {
         using var solicitud = new HttpRequestMessage(HttpMethod.Post, "api/usuarios/logout");
@@ -103,6 +115,7 @@ public class TetrisApi : ITetrisApi
         respuesta.EnsureSuccessStatusCode();
         _token = null;
     }
+
     public Task<Respuesta<TSala>> CrearSalaAsync(TCrearSala datos, CancellationToken ct = default)
     {
         return Enviar<TSala>(HttpMethod.Post, "api/salas", datos, ct);

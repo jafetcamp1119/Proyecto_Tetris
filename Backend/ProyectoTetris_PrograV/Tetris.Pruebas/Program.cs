@@ -1,20 +1,29 @@
+// Selecciona los grupos de prueba por argumento. Sin opciones ejecuta reglas y repositorios en memoria.
+// Las opciones SQL y acceso real son separadas y requieren revisión antes de ejecutarse.
 using System.Linq.Expressions;
 using System.Text.Json;
+
 using AccesoDatos.Contexto;
+
 using AutoMapper;
+
 using Dominio.DTO;
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazAD;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using LogicaJuego;
 using LogicaJuego.Implementacions;
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using Tetris.Cliente.Servicios;
+
 using Utilitarios;
 
 // Verificación opcional de solo lectura: no crea tablas ni modifica datos del usuario.
@@ -22,7 +31,8 @@ if (args.Contains("--verificar-sql"))
 {
     try
     {
-        var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB") ?? "Server=JAFET\\SQLEXPRESS;Database=TetrisDB;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;Connect Timeout=5";
+        var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB")
+            ?? "Server=JAFET\\SQLEXPRESS;Database=TetrisDB;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;Connect Timeout=5";
         using var db = new TetrisDBContext(new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer(cadena).Options);
         using var conexion = db.Database.GetDbConnection();
         conexion.Open();
@@ -30,6 +40,7 @@ if (args.Contains("--verificar-sql"))
         comando.CommandText = "SELECT OBJECT_NAME(parent_object_id), name, definition FROM sys.check_constraints ORDER BY 1,2";
         using var lector = comando.ExecuteReader();
         Console.WriteLine("Conexión SQL correcta. Restricciones actuales:");
+
         while (lector.Read())
         {
             Console.WriteLine($"{lector.GetString(0)} | {lector.GetString(1)} | {lector.GetString(2)}");
@@ -100,9 +111,13 @@ Prueba("El DTO público no expone hash", () =>
 });
 Prueba("EF conserva las entidades existentes y agrega credenciales de dispositivo", () =>
 {
-    using var db = new TetrisDBContext(new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer("Server=localhost;Database=Prueba;Integrated Security=true;TrustServerCertificate=true").Options);
+    using var db = new TetrisDBContext(
+        new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer("Server=localhost;Database=Prueba;Integrated Security=true;TrustServerCertificate=true").Options
+    );
     Verificar(db.Model.GetEntityTypes().Count() == 20);
-    Verificar(db.Model.FindEntityType(typeof(Partida))!.FindProperty("CantidadMinimaJugadores")!.GetDefaultValue()!.Equals(4));
+    Verificar(
+        db.Model.FindEntityType(typeof(Partida))!.FindProperty("CantidadMinimaJugadores")!.GetDefaultValue()!.Equals(4)
+    );
 });
 Prueba("La gravedad baja una pieza sin HTTP", () =>
 {
@@ -114,6 +129,7 @@ Prueba("La gravedad baja una pieza sin HTTP", () =>
 Prueba("Las paredes impiden salir del tablero", () =>
 {
     var t = motor.CrearTablero();
+
     for (var i = 0; i < 30; i++)
     {
         motor.Mover(t, Movimiento.Izquierda);
@@ -137,6 +153,7 @@ Prueba("Eliminar una línea desplaza y suma 100 puntos", () =>
     t.TipoPieza = 0;
     t.Columna = 3;
     t.Fila = 18;
+
     for (var c = 0; c < 10; c++)
     {
         t.Celdas[19][c] = c >= 3 && c <= 6 ? 0 : 1;
@@ -153,6 +170,7 @@ Prueba("Cuatro líneas suman 800 puntos y sube el nivel", () =>
     t.Columna = 3;
     t.Fila = 16;
     t.Lineas = 9;
+
     for (var f = 16; f < 20; f++)
     {
         for (var c = 0; c < 10; c++)
@@ -170,6 +188,7 @@ Prueba("Sin espacio para una pieza la partida se pierde", () =>
     t.TipoPieza = 0;
     t.Columna = 3;
     t.Fila = 18;
+
     for (var f = 0; f < 4; f++)
     {
         for (var c = 3; c < 7; c++)
@@ -192,6 +211,7 @@ Prueba("Caída instantánea fija cuatro bloques", () =>
 {
     var salas = new SalaLJ(new MotorControlado());
     var id = salas.Crear(1, "Jugador 1", new TCrearSala { Modo = modo }).Data!.Id;
+
     for (var i = 1; i <= cantidad; i++)
     {
         if (i > 1)
@@ -208,17 +228,17 @@ Prueba("Caída instantánea fija cuatro bloques", () =>
 
 Prueba("Multijugador no inicia con un único participante", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo, 1);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo, 1);
     Verificar(!salas.Iniciar(id, 1).Success);
 });
 Prueba("Un invitado no puede iniciar ni consultar una sala ajena", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Compartido);
+    var (id, salas) = CrearSala(ModoJuego.Compartido);
     Verificar(!salas.Iniciar(id, 2).Success && !salas.Obtener(id, 99).Success);
 });
 Prueba("Tablero compartido rechaza movimientos fuera de turno", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Compartido);
+    var (id, salas) = CrearSala(ModoJuego.Compartido);
     Verificar(salas.Iniciar(id, 1).Success);
     Verificar(!salas.Mover(id, 2, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 }).Success);
     var estado = salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 }).Data!;
@@ -226,7 +246,7 @@ Prueba("Tablero compartido rechaza movimientos fuera de turno", () =>
 });
 Prueba("Una secuencia repetida no suma dos veces", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     var accion = new TMovimiento
     {
@@ -239,8 +259,9 @@ Prueba("Una secuencia repetida no suma dos veces", () =>
 });
 Prueba("Competitivo mantiene al último activo y gana la mayor puntuación", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
+
     for (var i = 1; i <= 3; i++)
     {
         salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = i });
@@ -260,8 +281,9 @@ Prueba("Competitivo mantiene al último activo y gana la mayor puntuación", () 
 });
 Prueba("Los empates comparten el primer puesto", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
+
     for (var i = 1; i <= 4; i++)
     {
         salas.Mover(id, i, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
@@ -271,7 +293,7 @@ Prueba("Los empates comparten el primer puesto", () =>
 });
 Prueba("Reconectar dentro de 30 segundos conserva al jugador", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     salas.Desconectar("conexion-1");
     salas.Conectar(id, 1, "nueva");
@@ -280,7 +302,7 @@ Prueba("Reconectar dentro de 30 segundos conserva al jugador", () =>
 });
 Prueba("Una desconexión vencida cuenta como derrota y salta el turno", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Compartido);
+    var (id, salas) = CrearSala(ModoJuego.Compartido);
     salas.Iniciar(id, 1);
     salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
     salas.Desconectar("conexion-2");
@@ -290,14 +312,14 @@ Prueba("Una desconexión vencida cuenta como derrota y salta el turno", () =>
 });
 Prueba("Una instantánea no permite modificar la sesión", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     salas.Obtener(id, 1).Data!.Tableros[0].Celdas[19][0] = 7;
     Verificar(salas.Obtener(id, 1).Data!.Tableros[0].Celdas[19][0] == 0);
 });
 Prueba("Las revisiones de guardado no ocultan derrotas posteriores", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     var inicio = salas.PendientesPersistencia().Single();
     salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
@@ -337,6 +359,7 @@ Prueba("Coronas, rondas y resultados históricos independientes", () =>
     Verificar(!salas.NuevaRonda(id, 1).Success);
     var unidad = new UnidadMemoria();
     var registro = new RegistroPartidaLJ(unidad);
+
     for (var jugador = 1; jugador <= 4; jugador++)
     {
         salas.Mover(id, jugador, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
@@ -354,6 +377,7 @@ Prueba("Coronas, rondas y resultados históricos independientes", () =>
     Verificar(nueva.Jugadores.All(jugador => !jugador.Listo && !jugador.Perdido && !jugador.GanoRonda
         && jugador.Puntos == 0 && jugador.UltimaSecuencia == 0 && jugador.VictoriasSala == 1 && jugador.Corona));
     Verificar(!salas.Iniciar(id, 1).Success);
+
     for (var jugador = 1; jugador <= 4; jugador++)
     {
         salas.Preparar(id, jugador, true);
@@ -361,6 +385,7 @@ Prueba("Coronas, rondas y resultados históricos independientes", () =>
 
     salas.Iniciar(id, 1);
     salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 });
+
     for (var jugador = 1; jugador <= 4; jugador++)
     {
         salas.Mover(id, jugador, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 2 });
@@ -385,7 +410,7 @@ Prueba("UsuarioLJ propaga un error del repositorio", () =>
 });
 Prueba("Resultados persisten al perder y las estadísticas se guardan una vez", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     var unidad = new UnidadMemoria();
     var registro = new RegistroPartidaLJ(unidad);
@@ -394,6 +419,7 @@ Prueba("Resultados persisten al perder y las estadísticas se guardan una vez", 
     salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 2 });
     registro.GuardarAsync(salas.Obtener(id, 1).Data!).GetAwaiter().GetResult();
     Verificar(unidad.Resultados.Datos.Count == 1 && unidad.Resultados.Datos[0].PosicionFinal == 0);
+
     for (var i = 2; i <= 4; i++)
     {
         salas.Mover(id, i, new TMovimiento { Movimiento = Movimiento.Caer, Secuencia = 1 });
@@ -414,7 +440,10 @@ Prueba("Reutilizar un código corto no mezcla partidas históricas", () =>
     salas.Iniciar(id, 1);
     var original = salas.Obtener(id, 1).Data!;
     registro.GuardarAsync(original).GetAwaiter().GetResult();
-    var otra = original with { Id = Guid.NewGuid() };
+    var otra = original with
+    {
+        Id = Guid.NewGuid()
+    };
     registro.GuardarAsync(otra).GetAwaiter().GetResult();
     Verificar(original.Codigo == otra.Codigo);
     Verificar(unidad.Partidas.Datos.Count == 2);
@@ -429,7 +458,7 @@ Prueba("El código de invitación incorpora al participante", () =>
 });
 Prueba("Acciones concurrentes duplicadas se procesan una sola vez", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     Parallel.For(0, 30, _ => salas.Mover(id, 1, new TMovimiento { Movimiento = Movimiento.Bajar, Secuencia = 1 }));
     var jugador = salas.Obtener(id, 1).Data!.Jugadores[0];
@@ -437,7 +466,7 @@ Prueba("Acciones concurrentes duplicadas se procesan una sola vez", () =>
 });
 Prueba("Varias conexiones no causan una derrota al cerrar solo una", () =>
 {
-    var(id, salas) = CrearSala(ModoJuego.Competitivo);
+    var (id, salas) = CrearSala(ModoJuego.Competitivo);
     salas.Iniciar(id, 1);
     salas.Conectar(id, 1, "segunda");
     Verificar(salas.Desconectar("conexion-1").Length == 1);
@@ -558,6 +587,7 @@ sealed class RepositorioMemoria<T> : IRepositorioAD<T> where T : class
 {
     public List<T> Datos = [];
     public bool Fallar;
+
     public Respuesta<T> Insertar(T entidad)
     {
         Datos.Add(entidad);
@@ -601,12 +631,18 @@ sealed class RepositorioMemoria<T> : IRepositorioAD<T> where T : class
 sealed class UnidadMemoria : IUnidadTrabajoEF
 {
     public RepositorioMemoria<Usuario> Usuarios = new();
-    public IRepositorioAD<CredencialDispositivo> TCredencialDispositivo { get; } = new RepositorioMemoria<CredencialDispositivo>();
+
+    public IRepositorioAD<CredencialDispositivo> TCredencialDispositivo
+    {
+        get;
+    } = new RepositorioMemoria<CredencialDispositivo>();
+
     public RepositorioMemoria<Partida> Partidas = new();
     public RepositorioMemoria<Resultado> Resultados = new();
     public RepositorioMemoria<EstadisticasJugador> Estadisticas = new();
     public RepositorioMemoria<ParticipantesPartidum> Participantes = new();
     public RepositorioMemoria<TiposPieza> TiposPiezas = new();
+
     public IRepositorioAD<TiposPieza> TTipoPieza
     {
         get
@@ -655,8 +691,15 @@ sealed class UnidadMemoria : IUnidadTrabajoEF
         }
     }
 
-    public IRepositorioAD<TurnosPartidum> TTurno { get; } = new RepositorioMemoria<TurnosPartidum>();
-    public IRepositorioAD<ConfiguracionJugador> TConfiguracion { get; } = new RepositorioMemoria<ConfiguracionJugador>();
+    public IRepositorioAD<TurnosPartidum> TTurno
+    {
+        get;
+    } = new RepositorioMemoria<TurnosPartidum>();
+
+    public IRepositorioAD<ConfiguracionJugador> TConfiguracion
+    {
+        get;
+    } = new RepositorioMemoria<ConfiguracionJugador>();
 
     public int Completar()
     {
@@ -725,7 +768,11 @@ sealed class HttpSinSesion : HttpMessageHandler
 
 sealed class HttpConToken : HttpMessageHandler
 {
-    public bool Autorizado { get; private set; }
+    public bool Autorizado
+    {
+        get;
+        private set;
+    }
 
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,

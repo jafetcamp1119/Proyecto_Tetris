@@ -17,10 +17,13 @@ public class GuardadoPartidasService : BackgroundService
         this.logger = logger;
     }
 
+    // Cada dos segundos cancela históricos interrumpidos y guarda revisiones pendientes.
+    // Abre un contexto corto por operación y reintenta los fallos sin detener el reloj del juego.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var inicioLimpio = false;
         using var reloj = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
         try
         {
             while (await reloj.WaitForNextTickAsync(stoppingToken))
@@ -51,14 +54,14 @@ public class GuardadoPartidasService : BackgroundService
                             stoppingToken);
                         salas.ConfirmarPersistencia(estado.Id, estado.RevisionPersistencia);
                     }
-                    catch (Exception ex)when (!stoppingToken.IsCancellationRequested)
+                    catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
                     {
                         logger.LogError(ex, "No se pudo guardar la sala {Sala}; se reintentará.", estado.Id);
                     }
                 }
             }
         }
-        catch (OperationCanceledException)when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
         }
     }

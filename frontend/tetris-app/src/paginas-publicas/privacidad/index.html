@@ -1,92 +1,217 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#090e1c">
-  <meta name="description" content="Política de privacidad de Proyecto Tetris: cuentas, acceso con Google, credenciales de dispositivo y datos de juego.">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon/tetris-favicon-v2-32.png">
-  <title>Política de privacidad | Proyecto Tetris</title>
-  <link rel="stylesheet" href="/privacidad/privacidad.css">
-</head>
-<body>
-  <main class="pantalla-tetris">
-    <article class="tarjeta-tetris" aria-labelledby="titulo-privacidad">
-      <a class="volver" href="/">← Volver a Tetris</a>
-      <header>
-        <p class="etiqueta">PROYECTO TETRIS</p>
-        <h1 id="titulo-privacidad">Política de privacidad</h1>
-        <p>Proyecto Tetris es un videojuego académico universitario de piezas que caen, con modos Individual, Compartido y Competitivo. Esta página explica cómo se utiliza la información al jugar y recuperar una cuenta.</p>
-        <p class="fecha">Última revisión de este texto: 26 de octubre de 2026.</p>
-      </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090e1c" />
+    <meta
+      name="description"
+      content="Política de privacidad de Proyecto Tetris: cuentas, acceso con Google, credenciales de dispositivo y datos de juego."
+    />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icon/tetris-favicon-v2-32.png" />
+    <title>Política de privacidad | Proyecto Tetris</title>
+    <link rel="stylesheet" href="/privacidad/privacidad.css" />
+  </head>
+  <body>
+    <main class="pantalla-tetris">
+      <article class="tarjeta-tetris" aria-labelledby="titulo-privacidad">
+        <a class="volver" href="/">← Volver a Tetris</a>
+        <header>
+          <p class="etiqueta">PROYECTO TETRIS</p>
+          <h1 id="titulo-privacidad">Política de privacidad</h1>
+          <p
+            >Proyecto Tetris es un videojuego académico universitario de piezas que caen, con modos Individual,
+            Compartido y Competitivo. Esta página explica cómo se utiliza la información al jugar y recuperar una
+            cuenta.</p
+          >
+          <p class="fecha">Última revisión de este texto: 26 de octubre de 2026.</p>
+        </header>
 
-      <section aria-labelledby="responsable">
-        <h2 id="responsable">Responsable y contacto</h2>
-        <p>El responsable es el <strong>Equipo de desarrollo de Proyecto Tetris</strong>. Para consultas sobre privacidad y el uso de tu información, escribí a <a href="mailto:jafetcamp1119@gmail.com">jafetcamp1119@gmail.com</a>.</p>
-        <p>El proyecto está dirigido principalmente a estudiantes y docentes. Todavía no se ha establecido formalmente una edad mínima de uso.</p>
-      </section>
+        <section aria-labelledby="responsable">
+          <h2 id="responsable">Responsable y contacto</h2>
+          <p
+            >El responsable es el <strong>Equipo de desarrollo de Proyecto Tetris</strong>. Para consultas sobre
+            privacidad y el uso de tu información, escribí a
+            <a href="mailto:jafetcamp1119@gmail.com">jafetcamp1119@gmail.com</a>.</p
+          >
+          <p
+            >El proyecto está dirigido principalmente a estudiantes y docentes. Todavía no se ha establecido formalmente
+            una edad mínima de uso.</p
+          >
+        </section>
 
-      <section aria-labelledby="jugador">
-        <h2 id="jugador">Tu nickname y tu cuenta de jugador</h2>
-        <p>Podés crear un jugador con un nickname sin vincular Google. Se guardan ese nombre, un identificador interno, la fecha de registro y el estado de la cuenta para reconocer al jugador y asociar su progreso. El sistema utiliza también una versión normalizada del nickname para evitar nombres duplicados.</p>
-        <p>Elegí un nickname que no revele información personal que no quieras compartir: otros participantes pueden verlo en las salas y partidas.</p>
-      </section>
+        <section aria-labelledby="jugador">
+          <h2 id="jugador">Tu nickname y tu cuenta de jugador</h2>
+          <p
+            >Podés crear un jugador con un nickname sin vincular Google. Se guardan ese nombre, un identificador
+            interno, la fecha de registro y el estado de la cuenta para reconocer al jugador y asociar su progreso. El
+            sistema utiliza también una versión normalizada del nickname para evitar nombres duplicados.</p
+          >
+          <p
+            >Elegí un nickname que no revele información personal que no quieras compartir: otros participantes pueden
+            verlo en las salas y partidas.</p
+          >
+        </section>
 
-      <section aria-labelledby="credenciales">
-        <h2 id="credenciales">Credenciales de dispositivo y recuperación</h2>
-        <p>Para recordar y recuperar al jugador, el juego genera una credencial privada. No es un número de serie del teléfono ni un identificador publicitario. En Android se conserva mediante el almacenamiento seguro de la aplicación; en la versión web, en el almacenamiento del navegador, junto al identificador y el nickname de los perfiles recordados.</p>
-        <p>El servidor guarda una huella de comprobación de esa credencial, su relación con el jugador, las fechas de creación y vencimiento y, cuando corresponde, la fecha de revocación. El token temporal que autoriza las solicitudes del juego se mantiene en memoria mientras se utiliza la aplicación.</p>
-        <p>Al crear o recuperar tu cuenta recibís un código privado de recuperación; también podés generar otro desde el perfil. Se muestra para que lo guardés y no se conserva en el almacenamiento del navegador. El servidor guarda una huella protegida y su vencimiento. Generar otro desde el perfil reemplaza el anterior. Recuperar la cuenta crea una credencial de dispositivo y entrega un código nuevo pendiente: solo reemplaza al anterior cuando confirmás que lo guardaste. Así el anterior sigue disponible si se pierde la respuesta de red. Guardalo de forma privada: quien tenga acceso a él o a tus perfiles recordados podría utilizar tu jugador.</p>
-        <p>Cada cuenta tiene una sesión activa. Al ingresar desde otro dispositivo se invalida el acceso anterior. Si la partida sigue disponible en el servidor, podés retomarla en la misma sala sin reiniciar el tablero; las partidas activas dependen de que el servidor continúe ejecutándose.</p>
-      </section>
+        <section aria-labelledby="credenciales">
+          <h2 id="credenciales">Credenciales de dispositivo y recuperación</h2>
+          <p
+            >Para recordar y recuperar al jugador, el juego genera una credencial privada. No es un número de serie del
+            teléfono ni un identificador publicitario. En Android se conserva mediante el almacenamiento seguro de la
+            aplicación; en la versión web, en el almacenamiento del navegador, junto al identificador y el nickname de
+            los perfiles recordados.</p
+          >
+          <p
+            >El servidor guarda una huella de comprobación de esa credencial, su relación con el jugador, las fechas de
+            creación y vencimiento y, cuando corresponde, la fecha de revocación. El token temporal que autoriza las
+            solicitudes del juego se mantiene en memoria mientras se utiliza la aplicación.</p
+          >
+          <p
+            >Al crear o recuperar tu cuenta recibís un código privado de recuperación; también podés generar otro desde
+            el perfil. Se muestra para que lo guardés y no se conserva en el almacenamiento del navegador. El servidor
+            guarda una huella protegida y su vencimiento. Generar otro desde el perfil reemplaza el anterior. Recuperar
+            la cuenta crea una credencial de dispositivo y entrega un código nuevo pendiente: solo reemplaza al anterior
+            cuando confirmás que lo guardaste. Así el anterior sigue disponible si se pierde la respuesta de red.
+            Guardalo de forma privada: quien tenga acceso a él o a tus perfiles recordados podría utilizar tu
+            jugador.</p
+          >
+          <p
+            >Cada cuenta tiene una sesión activa. Al ingresar desde otro dispositivo se invalida el acceso anterior. Si
+            la partida sigue disponible en el servidor, podés retomarla en la misma sala sin reiniciar el tablero; las
+            partidas activas dependen de que el servidor continúe ejecutándose.</p
+          >
+        </section>
 
-      <section aria-labelledby="google">
-        <h2 id="google">Vinculación opcional con Google</h2>
-        <p>También podés elegir «Continuar con Google» desde el login. Si esa cuenta todavía no está registrada, se pide un nickname propio y se crea el jugador vinculado. Para completar ese paso, el servidor mantiene durante un máximo de cinco minutos un comprobante temporal en memoria con la identidad ya verificada. El comprobante solo permite finalizar ese registro y deja de servir al utilizarse; no se guarda en el almacenamiento del navegador.</p>
-        <p>Google es opcional. Al vincularlo desde el perfil, el juego verifica una respuesta de identidad de Google y asocia el identificador de esa cuenta al jugador existente. También puede guardar la dirección de la foto de perfil y mostrarla en tu perfil. La vinculación permite recuperar el mismo jugador en otro dispositivo sin crear una cuenta de Tetris duplicada ni cambiar sus estadísticas.</p>
-        <p>La respuesta de Google puede incluir información básica, como nombre y correo. El flujo actual utiliza el identificador de Google y la dirección del avatar; no copia el nombre ni el correo de Google al perfil de Tetris. El juego no solicita tu contraseña de Google ni permisos para leer Gmail, contactos o archivos de Drive.</p>
-        <p>La aplicación utiliza temporalmente la respuesta de identidad para comprobar el acceso. El código de Tetris no la guarda como credencial permanente de la cuenta. Al mostrar una imagen alojada por Google, el dispositivo realiza una solicitud a ese servicio.</p>
-      </section>
+        <section aria-labelledby="google">
+          <h2 id="google">Vinculación opcional con Google</h2>
+          <p
+            >También podés elegir «Continuar con Google» desde el login. Si esa cuenta todavía no está registrada, se
+            pide un nickname propio y se crea el jugador vinculado. Para completar ese paso, el servidor mantiene
+            durante un máximo de cinco minutos un comprobante temporal en memoria con la identidad ya verificada. El
+            comprobante solo permite finalizar ese registro y deja de servir al utilizarse; no se guarda en el
+            almacenamiento del navegador.</p
+          >
+          <p
+            >Google es opcional. Al vincularlo desde el perfil, el juego verifica una respuesta de identidad de Google y
+            asocia el identificador de esa cuenta al jugador existente. También puede guardar la dirección de la foto de
+            perfil y mostrarla en tu perfil. La vinculación permite recuperar el mismo jugador en otro dispositivo sin
+            crear una cuenta de Tetris duplicada ni cambiar sus estadísticas.</p
+          >
+          <p
+            >La respuesta de Google puede incluir información básica, como nombre y correo. El flujo actual utiliza el
+            identificador de Google y la dirección del avatar; no copia el nombre ni el correo de Google al perfil de
+            Tetris. El juego no solicita tu contraseña de Google ni permisos para leer Gmail, contactos o archivos de
+            Drive.</p
+          >
+          <p
+            >La aplicación utiliza temporalmente la respuesta de identidad para comprobar el acceso. El código de Tetris
+            no la guarda como credencial permanente de la cuenta. Al mostrar una imagen alojada por Google, el
+            dispositivo realiza una solicitud a ese servicio.</p
+          >
+        </section>
 
-      <section aria-labelledby="partidas">
-        <h2 id="partidas">Partidas, resultados y estadísticas</h2>
-        <p>El servidor utiliza los participantes, el modo y la configuración de la sala, el estado de conexión, los turnos, movimientos y tableros para coordinar el juego en tiempo real. Las salas activas se mantienen en memoria mientras funciona el servidor.</p>
-        <p>En la base de datos se guardan datos de las partidas y sus participantes, como fechas, modo, estado, puntuaciones, líneas eliminadas, nivel, posición final y resultado. También se conservan estadísticas acumuladas: partidas jugadas, ganadas y perdidas, puntos, récords y niveles alcanzados. Estos datos permiten mostrar el historial y el progreso del jugador.</p>
-        <p>Los integrantes de una sala reciben la información necesaria para jugar, incluidos los nicknames, resultados y estado de la partida. La API de clasificación permite a jugadores autenticados consultar identificadores de jugador y estadísticas agregadas. Las credenciales privadas y los códigos de recuperación no forman parte de los datos públicos de las salas o de esa clasificación.</p>
-      </section>
+        <section aria-labelledby="partidas">
+          <h2 id="partidas">Partidas, resultados y estadísticas</h2>
+          <p
+            >El servidor utiliza los participantes, el modo y la configuración de la sala, el estado de conexión, los
+            turnos, movimientos y tableros para coordinar el juego en tiempo real. Las salas activas se mantienen en
+            memoria mientras funciona el servidor.</p
+          >
+          <p
+            >En la base de datos se guardan datos de las partidas y sus participantes, como fechas, modo, estado,
+            puntuaciones, líneas eliminadas, nivel, posición final y resultado. También se conservan estadísticas
+            acumuladas: partidas jugadas, ganadas y perdidas, puntos, récords y niveles alcanzados. Estos datos permiten
+            mostrar el historial y el progreso del jugador.</p
+          >
+          <p
+            >Los integrantes de una sala reciben la información necesaria para jugar, incluidos los nicknames,
+            resultados y estado de la partida. La API de clasificación permite a jugadores autenticados consultar
+            identificadores de jugador y estadísticas agregadas. Las credenciales privadas y los códigos de recuperación
+            no forman parte de los datos públicos de las salas o de esa clasificación.</p
+          >
+        </section>
 
-      <section aria-labelledby="dispositivo">
-        <h2 id="dispositivo">Preferencias y almacenamiento local</h2>
-        <p>En el dispositivo se recuerdan las preferencias de música y efectos, como activación y volumen. La versión web utiliza almacenamiento local del navegador para los perfiles recordados y esas preferencias. Además, guarda temporalmente en la sesión del navegador la referencia a una sala para facilitar el regreso a la partida.</p>
-        <p>Borrar los datos del navegador o desinstalar la aplicación puede hacer que pierdas las credenciales guardadas en ese dispositivo. Eso no elimina por sí solo la cuenta o el historial del servidor; para recuperarlos necesitarás un medio de recuperación disponible.</p>
-      </section>
+        <section aria-labelledby="dispositivo">
+          <h2 id="dispositivo">Preferencias y almacenamiento local</h2>
+          <p
+            >En el dispositivo se recuerdan las preferencias de música y efectos, como activación y volumen. La versión
+            web utiliza almacenamiento local del navegador para los perfiles recordados y esas preferencias. Además,
+            guarda temporalmente en la sesión del navegador la referencia a una sala para facilitar el regreso a la
+            partida.</p
+          >
+          <p
+            >Borrar los datos del navegador o desinstalar la aplicación puede hacer que pierdas las credenciales
+            guardadas en ese dispositivo. Eso no elimina por sí solo la cuenta o el historial del servidor; para
+            recuperarlos necesitarás un medio de recuperación disponible.</p
+          >
+        </section>
 
-      <section aria-labelledby="servicios">
-        <h2 id="servicios">Conexión y servicios utilizados</h2>
-        <p>Firebase Hosting sirve la página web. La configuración publicada conecta con el servidor de Tetris a través de Cloudflare Tunnel; el servidor propio conserva las cuentas y el progreso en su base de datos. Google interviene cuando se utiliza su opción de identificación o se carga su botón de acceso.</p>
-        <p>Estos servicios reciben información técnica necesaria para entregar el contenido y las solicitudes, como la dirección IP y datos de la conexión. El servidor utiliza la IP para limitar intentos de acceso y puede generar registros de errores para diagnosticar fallos. Los datos de juego se transmiten al servidor para ejecutar y sincronizar las partidas.</p>
-        <p>El equipo todavía debe confirmar la configuración efectiva de los registros técnicos, las copias de seguridad y sus plazos de conservación, incluidos los de los proveedores utilizados.</p>
-      </section>
+        <section aria-labelledby="servicios">
+          <h2 id="servicios">Conexión y servicios utilizados</h2>
+          <p
+            >Firebase Hosting sirve la página web. La configuración publicada conecta con el servidor de Tetris a través
+            de Cloudflare Tunnel; el servidor propio conserva las cuentas y el progreso en su base de datos. Google
+            interviene cuando se utiliza su opción de identificación o se carga su botón de acceso.</p
+          >
+          <p
+            >Estos servicios reciben información técnica necesaria para entregar el contenido y las solicitudes, como la
+            dirección IP y datos de la conexión. El servidor utiliza la IP para limitar intentos de acceso y puede
+            generar registros de errores para diagnosticar fallos. Los datos de juego se transmiten al servidor para
+            ejecutar y sincronizar las partidas.</p
+          >
+          <p
+            >El equipo todavía debe confirmar la configuración efectiva de los registros técnicos, las copias de
+            seguridad y sus plazos de conservación, incluidos los de los proveedores utilizados.</p
+          >
+        </section>
 
-      <section aria-labelledby="conservacion">
-        <h2 id="conservacion">Conservación de los datos</h2>
-        <p><strong>Aún no se ha definido un plazo general de conservación de cuentas, partidas, estadísticas y registros.</strong> La versión actual mantiene las cuentas y el historial en la base de datos; no incluye un proceso automático general que elimine esos datos por antigüedad.</p>
-        <p>Las credenciales de dispositivo y los códigos privados tienen vencimiento y se comprueba su validez al utilizarlos. El vencimiento o la revocación de una credencial no implica borrar automáticamente su registro, la cuenta ni las estadísticas. No se promete un plazo de borrado que no esté implementado.</p>
-      </section>
+        <section aria-labelledby="conservacion">
+          <h2 id="conservacion">Conservación de los datos</h2>
+          <p
+            ><strong
+              >Aún no se ha definido un plazo general de conservación de cuentas, partidas, estadísticas y
+              registros.</strong
+            >
+            La versión actual mantiene las cuentas y el historial en la base de datos; no incluye un proceso automático
+            general que elimine esos datos por antigüedad.</p
+          >
+          <p
+            >Las credenciales de dispositivo y los códigos privados tienen vencimiento y se comprueba su validez al
+            utilizarlos. El vencimiento o la revocación de una credencial no implica borrar automáticamente su registro,
+            la cuenta ni las estadísticas. No se promete un plazo de borrado que no esté implementado.</p
+          >
+        </section>
 
-      <section aria-labelledby="opciones">
-        <h2 id="opciones">Opciones disponibles y consultas</h2>
-        <p>“Cambiar de jugador” cambia el perfil activo. “Quitar del dispositivo” elimina ese perfil de la lista local recordada. “Cerrar sesión” revoca la credencial de esa sesión del dispositivo. Estas acciones no eliminan la cuenta ni las partidas guardadas en el servidor.</p>
-        <p>La aplicación todavía no ofrece una función para eliminar la cuenta o su historial. Para consultar por tus datos, solicitar una corrección o plantear una solicitud de eliminación, podés escribir al correo de contacto indicado. El equipo aún debe definir el procedimiento de atención y sus plazos; esta página no promete una eliminación automática ni un plazo de respuesta establecido.</p>
-      </section>
+        <section aria-labelledby="opciones">
+          <h2 id="opciones">Opciones disponibles y consultas</h2>
+          <p
+            >“Cambiar de jugador” cambia el perfil activo. “Quitar del dispositivo” elimina ese perfil de la lista local
+            recordada. “Cerrar sesión” revoca la credencial de esa sesión del dispositivo. Estas acciones no eliminan la
+            cuenta ni las partidas guardadas en el servidor.</p
+          >
+          <p
+            >La aplicación todavía no ofrece una función para eliminar la cuenta o su historial. Para consultar por tus
+            datos, solicitar una corrección o plantear una solicitud de eliminación, podés escribir al correo de
+            contacto indicado. El equipo aún debe definir el procedimiento de atención y sus plazos; esta página no
+            promete una eliminación automática ni un plazo de respuesta establecido.</p
+          >
+        </section>
 
-      <aside class="pendientes" aria-labelledby="pendientes">
-        <h2 id="pendientes">Aspectos pendientes de definición</h2>
-        <p>Antes de considerar esta política definitiva, el equipo debe definir los plazos y criterios de conservación, el procedimiento para atender solicitudes sobre datos y sus tiempos de respuesta, y la edad mínima o las condiciones de participación de menores. También debe confirmar cómo se conservan los registros técnicos y las copias de seguridad.</p>
-        <p>Esta página describe el funcionamiento actual del proyecto y hace visibles esas decisiones pendientes. Las actualizaciones se reflejarán en este texto.</p>
-      </aside>
-      <footer><a class="volver" href="/">Volver a Tetris</a></footer>
-    </article>
-  </main>
-</body>
+        <aside class="pendientes" aria-labelledby="pendientes">
+          <h2 id="pendientes">Aspectos pendientes de definición</h2>
+          <p
+            >Antes de considerar esta política definitiva, el equipo debe definir los plazos y criterios de
+            conservación, el procedimiento para atender solicitudes sobre datos y sus tiempos de respuesta, y la edad
+            mínima o las condiciones de participación de menores. También debe confirmar cómo se conservan los registros
+            técnicos y las copias de seguridad.</p
+          >
+          <p
+            >Esta página describe el funcionamiento actual del proyecto y hace visibles esas decisiones pendientes. Las
+            actualizaciones se reflejarán en este texto.</p
+          >
+        </aside>
+        <footer><a class="volver" href="/">Volver a Tetris</a></footer>
+      </article>
+    </main>
+  </body>
 </html>

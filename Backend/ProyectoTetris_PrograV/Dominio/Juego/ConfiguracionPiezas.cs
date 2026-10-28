@@ -65,20 +65,38 @@ public sealed class ConfiguracionPiezas
         this.PuntosPorLineas = puntosPorLineas;
     }
 
-    public bool EspecialesActivas { get; }
+    public bool EspecialesActivas
+    {
+        get;
+    }
 
     // Porcentaje de 1 a 100 de que cada pieza nueva sea especial.
-    public int ProbabilidadEspecial { get; }
+    public int ProbabilidadEspecial
+    {
+        get;
+    }
 
-    public IReadOnlyList<TipoPiezaEspecial> TiposDisponibles { get; }
+    public IReadOnlyList<TipoPiezaEspecial> TiposDisponibles
+    {
+        get;
+    }
 
     // Índices (0 a 6) de las piezas normales que pueden salir. Nunca está vacía.
-    public IReadOnlyList<int> FormasPermitidas { get; }
+    public IReadOnlyList<int> FormasPermitidas
+    {
+        get;
+    }
 
-    public VelocidadInicial Velocidad { get; }
+    public VelocidadInicial Velocidad
+    {
+        get;
+    }
 
     // Cuatro valores: puntos por 1, 2, 3 y 4 líneas.
-    public IReadOnlyList<int> PuntosPorLineas { get; }
+    public IReadOnlyList<int> PuntosPorLineas
+    {
+        get;
+    }
 
     // Milisegundos entre caídas en el nivel 1.
     public int IntervaloBaseMs

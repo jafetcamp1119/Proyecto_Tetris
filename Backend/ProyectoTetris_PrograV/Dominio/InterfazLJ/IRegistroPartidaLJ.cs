@@ -6,5 +6,6 @@ namespace Dominio.InterfazLJ;
 public interface IRegistroPartidaLJ
 {
     Task CancelarInterrumpidasAsync(CancellationToken cancellationToken = default);
+
     Task GuardarAsync(TSala sala, CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+-- Completa el catálogo de efectos sin sobrescribir las configuraciones existentes.
 USE [TetrisDB];
 GO
 SET XACT_ABORT ON;

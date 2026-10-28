@@ -1,14 +1,19 @@
+using System.Linq.Expressions;
+
 using AutoMapper;
+
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazAD;
 using Dominio.InterfazLJ;
+
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
+
 using Utilitarios;
 
 namespace LogicaJuego.Implementacions;
 
+// Consulta el historial y el ranking a partir de resultados y estadísticas guardados.
 public class ResultadoLJ : BaseLJ<Resultado, TResultado>, IResultadoLJ
 {
     public ResultadoLJ(
@@ -27,11 +32,13 @@ public class ResultadoLJ : BaseLJ<Resultado, TResultado>, IResultadoLJ
         return x => x.ResultadoId == datos.ResultadoId;
     }
 
+    // Ordena el historial reciente e incorpora modalidad, participantes y empates.
     public Respuesta<IEnumerable<TResultado>> ObtenerPorUsuario(int usuarioId)
     {
         return Ejecutar(() =>
         {
             var respuesta = Unidad.TResultado.Buscar(r => r.UsuarioId == usuarioId);
+
             if (!respuesta.Success)
             {
                 return Respuesta<IEnumerable<TResultado>>.Fail(respuesta.Error ?? "Error al consultar resultados.");
@@ -46,21 +53,25 @@ public class ResultadoLJ : BaseLJ<Resultado, TResultado>, IResultadoLJ
                 .GroupBy(p => p.PartidaId).ToDictionary(g => g.Key, g => g.Count());
             var ganadores = Unidad.TResultado.Buscar(r => ids.Contains(r.PartidaId) && r.EsGanador).Data!
                 .GroupBy(r => r.PartidaId).ToDictionary(g => g.Key, g => g.Count());
+
             foreach (var resultado in resultados)
             {
                 resultado.Modalidad = partidas.GetValueOrDefault(resultado.PartidaId)?.TipoPartida ?? "Desconocida";
                 resultado.CantidadParticipantes = cantidades.GetValueOrDefault(resultado.PartidaId);
                 resultado.EmpatePrimerLugar = resultado.EsGanador && ganadores.GetValueOrDefault(resultado.PartidaId) > 1;
             }
+
             return Respuesta<IEnumerable<TResultado>>.Ok(resultados);
         });
     }
 
+    // Ordena por récord de puntos y devuelve hasta cien jugadores.
     public Respuesta<IEnumerable<TRanking>> Ranking()
     {
         return Ejecutar(() =>
         {
             var respuesta = Unidad.TEstadistica.Listar();
+
             if (!respuesta.Success)
             {
                 return Respuesta<IEnumerable<TRanking>>.Fail(respuesta.Error ?? "Error al consultar ranking.");

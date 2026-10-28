@@ -1,12 +1,18 @@
+# Exige la confirmación PUBLICAR desde la consola antes de permitir la publicación.
+# Comprueba si la entrada coincide con la palabra de confirmación requerida.
 function EsConfirmacionPublicacion($Respuesta) {
-    if ($null -eq $Respuesta -or $Respuesta -isnot [string]) { return $false }
+    if ($null -eq $Respuesta -or $Respuesta -isnot [string]) {
+        return $false
+    }
     return [string]::Equals($Respuesta.Trim(), 'PUBLICAR', [StringComparison]::OrdinalIgnoreCase)
 }
 
+# Lee una sola respuesta de la consola que heredó el proceso.
 function LeerLineaConfirmacion {
     return [Console]::ReadLine()
 }
 
+# Cancela si falta la confirmación o termina la entrada; no interpreta EOF como autorización.
 function SolicitarConfirmacionPublicacion {
     Write-Host 'Para autorizar este deploy escribi PUBLICAR; cualquier otra respuesta cancela: ' -NoNewline
     try {

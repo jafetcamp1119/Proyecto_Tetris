@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.HttpOverrides;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
+// Configura HTTPS y los encabezados del proxy que conecta Cloudflare con la API local.
 public static class ConexionPublicada
 {
+    // Configura los proxies de confianza que pueden informar el esquema HTTPS original.
     public static IServiceCollection AgregarConexionPublicada(this IServiceCollection servicios)
     {
         servicios.Configure<ForwardedHeadersOptions>(opciones =>
@@ -17,6 +19,7 @@ public static class ConexionPublicada
         return servicios;
     }
 
+    // Aplica los encabezados del proxy y exige HTTPS en producción salvo la ruta de salud.
     public static IApplicationBuilder UsarConexionPublicada(this IApplicationBuilder app, bool desarrollo)
     {
         app.UseForwardedHeaders();
@@ -36,12 +39,14 @@ public static class ConexionPublicada
             {
                 var proveedor = contexto.RequestServices.GetRequiredService<ICorsPolicyProvider>();
                 var politica = await proveedor.GetPolicyAsync(contexto, ConfiguracionSeguridad.PoliticaCors);
+
                 if (origen.Count != 1 || politica == null || !politica.IsOriginAllowed(origen.ToString()))
                 {
                     contexto.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return;
                 }
             }
+
             await siguiente();
         });
         return app;

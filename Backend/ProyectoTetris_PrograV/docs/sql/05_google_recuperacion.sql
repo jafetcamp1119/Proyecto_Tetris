@@ -1,3 +1,5 @@
+-- Agrega columnas de identidad Google y recuperación con índices únicos filtrados.
+-- Los valores null permiten cuentas que todavía no tienen Google o recuperación.
 -- Actualización aditiva e idempotente. Ejecutar después de verificar un respaldo.
 -- No borra, fusiona ni reemplaza usuarios, partidas ni estadísticas.
 USE TetrisDB;

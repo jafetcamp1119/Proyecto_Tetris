@@ -28,12 +28,16 @@ describe('LoginPage', () => {
 
   it('muestra una sola explicación exacta y no atribuye un vencimiento a otro dispositivo', () => {
     component.acceso.motivoCierre.set('SesionReemplazada');
-    component.acceso.mensajeSesion.set('Alguien más inició sesión con tu cuenta en otro dispositivo. Por seguridad, cerramos esta sesión.');
+    component.acceso.mensajeSesion.set(
+      'Alguien más inició sesión con tu cuenta en otro dispositivo. Por seguridad, cerramos esta sesión.',
+    );
     fixture.detectChanges();
     const elemento = fixture.nativeElement as HTMLElement;
     expect(elemento.querySelectorAll('.aviso-sesion')).toHaveLength(1);
     expect(elemento.querySelector('.aviso-sesion')?.textContent).toContain('Sesión cerrada');
-    expect(elemento.querySelector('.aviso-sesion')?.textContent).toContain('Si no fuiste vos, te recomendamos recuperar tu cuenta.');
+    expect(elemento.querySelector('.aviso-sesion')?.textContent).toContain(
+      'Si no fuiste vos, te recomendamos recuperar tu cuenta.',
+    );
     component.acceso.motivoCierre.set('SesionVencida');
     component.acceso.mensajeSesion.set('Tu sesión venció. Iniciá sesión nuevamente para continuar.');
     fixture.detectChanges();

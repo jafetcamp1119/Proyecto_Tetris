@@ -1,46 +1,58 @@
+<!-- Datos de cuenta e historial; el código privado se muestra mediante un componente temporal. -->
 <ion-content>
-    <main class="pantalla-tetris">
-        <a class="accion secundaria" routerLink="/home">← Menú principal</a>
-        <section class="tarjeta-tetris">
-            <h1>Mi perfil</h1>
-            @if (acceso.sesion(); as jugador) {
-                @if (jugador.avatarGoogle) {
-                    <img class="avatar" [src]="jugador.avatarGoogle" alt="Avatar de Google" referrerpolicy="no-referrer">
-                }
-                <h2>{{ jugador.nombreUsuario }}</h2>
-                <p>Cuenta: {{ jugador.googleVinculado ? 'Google' : 'Invitado' }}</p>
-                @if (!jugador.googleVinculado) {
-                    <p>Tu progreso está guardado, pero podrías perder el acceso si cambiás de dispositivo sin vincular tu cuenta o guardar un código de recuperación.</p>
-                    @if (visible) {
-                        <app-google-acceso [vincular]="true" />
-                    }
-                }
-            }
-            <p role="status">{{ mensaje }}</p>
-            @if (cargando) {
-                <p>Cargando tu progreso...</p>
-            } @else if (!mensaje) {
-                <h3>Solitario · Mejor puntuación</h3>
-                <strong class="puntaje">{{ mejorPuntuacion | number }} puntos</strong>
-                <h3>Victorias multijugador: {{ victorias }}</h3>
-                <h3>Historial multijugador</h3>
-                @for (resultado of multijugador; track resultado.resultadoId) {
-                    <article class="fila-resultado">
-                        <strong>{{ resultado.modalidad === 'Desconocida' ? 'Partida multijugador' : resultado.modalidad }} · {{ resultado.fechaResultado | date:'short' }}</strong>
-                        <p>{{ resultado.puntuacion }} puntos · Posición {{ resultado.posicionFinal }} de {{ resultado.cantidadParticipantes }}</p>
-                        <p>{{ resultado.esGanador ? (resultado.empatePrimerLugar ? 'Empate en primer lugar' : 'Victoria') : 'Partida finalizada' }}</p>
-                    </article>
-                } @empty {
-                    <p>Todavía no hay partidas multijugador registradas.</p>
-                }
-            }
-            <button class="accion" (click)="guardarCuenta()">Guardar mi cuenta con código privado</button>
-            <app-codigo-recuperacion />
-            <div class="acciones">
-                <button class="accion secundaria" (click)="cambiarJugador()">Cambiar de jugador</button>
-                <button class="accion peligro" (click)="cerrarSesion()">Cerrar sesión</button>
-            </div>
-            <p>Los jugadores recordados comparten el acceso de este dispositivo. No son cuentas protegidas por una contraseña individual.</p>
-        </section>
-    </main>
+  <main class="pantalla-tetris">
+    <a class="accion secundaria" routerLink="/home">← Menú principal</a>
+    <section class="tarjeta-tetris">
+      <h1>Mi perfil</h1>
+      @if (acceso.sesion(); as jugador) { @if (jugador.avatarGoogle) {
+      <img class="avatar" [src]="jugador.avatarGoogle" alt="Avatar de Google" referrerpolicy="no-referrer" />
+      }
+      <h2>{{ jugador.nombreUsuario }}</h2>
+      <p>Cuenta: {{ jugador.googleVinculado ? 'Google' : 'Invitado' }}</p>
+      @if (!jugador.googleVinculado) {
+      <p
+        >Tu progreso está guardado, pero podrías perder el acceso si cambiás de dispositivo sin vincular tu cuenta o
+        guardar un código de recuperación.</p
+      >
+      @if (visible) {
+      <app-google-acceso [vincular]="true" />
+      } } }
+      <p role="status">{{ mensaje }}</p>
+      @if (cargando) {
+      <p>Cargando tu progreso...</p>
+      } @else if (!mensaje) {
+      <h3>Solitario · Mejor puntuación</h3>
+      <strong class="puntaje">{{ mejorPuntuacion | number }} puntos</strong>
+      <h3>Victorias multijugador: {{ victorias }}</h3>
+      <h3>Historial multijugador</h3>
+      @for (resultado of multijugador; track resultado.resultadoId) {
+      <article class="fila-resultado">
+        <strong
+          >{{ resultado.modalidad === 'Desconocida' ? 'Partida multijugador' : resultado.modalidad }} · {{
+          resultado.fechaResultado | date:'short' }}</strong
+        >
+        <p
+          >{{ resultado.puntuacion }} puntos · Posición {{ resultado.posicionFinal }} de {{
+          resultado.cantidadParticipantes }}</p
+        >
+        <p
+          >{{ resultado.esGanador ? (resultado.empatePrimerLugar ? 'Empate en primer lugar' : 'Victoria') : 'Partida
+          finalizada' }}</p
+        >
+      </article>
+      } @empty {
+      <p>Todavía no hay partidas multijugador registradas.</p>
+      } }
+      <button class="accion" (click)="guardarCuenta()">Guardar mi cuenta con código privado</button>
+      <app-codigo-recuperacion />
+      <div class="acciones">
+        <button class="accion secundaria" (click)="cambiarJugador()">Cambiar de jugador</button>
+        <button class="accion peligro" (click)="cerrarSesion()">Cerrar sesión</button>
+      </div>
+      <p
+        >Los jugadores recordados comparten el acceso de este dispositivo. No son cuentas protegidas por una contraseña
+        individual.</p
+      >
+    </section>
+  </main>
 </ion-content>

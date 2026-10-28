@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// Define el mantenimiento y la consulta de preferencias por usuario.
 using Dominio.EntidadesTipadas;
+
 using Utilitarios;
 
 namespace Dominio.InterfazLJ
@@ -11,11 +10,17 @@ namespace Dominio.InterfazLJ
         Respuesta<TConfiguracion> ObtenerPorUsuario(int usuarioId);
 
         Respuesta<TConfiguracion> GuardarPorUsuario(int usuarioId, TConfiguracion datos);
+
         Respuesta<TConfiguracion> Insertar(TConfiguracion configuracion);
+
         Respuesta<TConfiguracion> Modificar(TConfiguracion configuracion);
+
         Respuesta<bool> Eliminar(TConfiguracion configuracion);
+
         Respuesta<IEnumerable<TConfiguracion>> Obtener(TConfiguracion configuracion);
+
         Respuesta<TConfiguracion> Buscar(TConfiguracion configuracion);
+
         Respuesta<IEnumerable<TConfiguracion>> Listar();
     }
 }

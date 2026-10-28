@@ -1,3 +1,5 @@
+-- Prepara nicknames únicos normalizados, credenciales de dispositivo y códigos históricos de ronda.
+-- Incluye un procedimiento que consulta ganadores ya escritos por el servidor.
 USE [TetrisDB];
 GO
 SET ANSI_NULLS ON;

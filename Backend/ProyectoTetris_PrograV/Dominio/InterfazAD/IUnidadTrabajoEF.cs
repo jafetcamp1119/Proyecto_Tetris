@@ -1,29 +1,62 @@
+// Define los repositorios compartidos y cómo confirmar o revertir los cambios en SQL.
 using Dominio.Entidades;
 
 namespace Dominio.InterfazAD;
 
 public interface IUnidadTrabajoEF : IDisposable
 {
-    IRepositorioAD<Usuario> TUsuario { get; }
-    IRepositorioAD<CredencialDispositivo> TCredencialDispositivo { get; }
+    IRepositorioAD<Usuario> TUsuario
+    {
+        get;
+    }
 
-    IRepositorioAD<ConfiguracionJugador> TConfiguracion { get; }
+    IRepositorioAD<CredencialDispositivo> TCredencialDispositivo
+    {
+        get;
+    }
 
-    IRepositorioAD<Partida> TPartida { get; }
+    IRepositorioAD<ConfiguracionJugador> TConfiguracion
+    {
+        get;
+    }
 
-    IRepositorioAD<ParticipantesPartidum> TParticipante { get; }
+    IRepositorioAD<Partida> TPartida
+    {
+        get;
+    }
 
-    IRepositorioAD<TurnosPartidum> TTurno { get; }
+    IRepositorioAD<ParticipantesPartidum> TParticipante
+    {
+        get;
+    }
 
-    IRepositorioAD<Resultado> TResultado { get; }
+    IRepositorioAD<TurnosPartidum> TTurno
+    {
+        get;
+    }
 
-    IRepositorioAD<EstadisticasJugador> TEstadistica { get; }
+    IRepositorioAD<Resultado> TResultado
+    {
+        get;
+    }
 
-    IRepositorioAD<TiposPieza> TTipoPieza { get; }
+    IRepositorioAD<EstadisticasJugador> TEstadistica
+    {
+        get;
+    }
+
+    IRepositorioAD<TiposPieza> TTipoPieza
+    {
+        get;
+    }
 
     int Completar();
+
     Task<int> CompletarAsync(CancellationToken cancellationToken = default);
+
     void EmpezarTransaccion();
+
     void CompletarTran();
+
     void Rollback();
 }

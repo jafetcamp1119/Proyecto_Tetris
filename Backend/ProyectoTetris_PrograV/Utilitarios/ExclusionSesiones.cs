@@ -1,6 +1,7 @@
 namespace Utilitarios;
 
 // Cerraduras acotadas: el cambio de sesion y una accion del hub no se intercalan.
+// Evita que dos cambios de sesión del mismo usuario se ejecuten al mismo tiempo.
 public static class ExclusionSesiones
 {
     private static readonly SemaphoreSlim[] cerraduras = Enumerable.Range(0, 64)
@@ -23,9 +24,13 @@ public static class ExclusionSesiones
     private sealed class Liberacion(SemaphoreSlim cerradura) : IDisposable
     {
         private int liberada;
+
         public void Dispose()
         {
-            if (Interlocked.Exchange(ref liberada, 1) == 0) { cerradura.Release(); }
+            if (Interlocked.Exchange(ref liberada, 1) == 0)
+            {
+                cerradura.Release();
+            }
         }
     }
 }

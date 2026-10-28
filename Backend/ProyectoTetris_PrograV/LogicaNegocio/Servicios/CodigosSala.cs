@@ -31,12 +31,14 @@ internal sealed class CodigosSala
         return null;
     }
 
+    // Normaliza el código y busca el identificador de la sala que lo tiene reservado.
     public bool TryObtenerSala(string codigo, out Guid salaId)
     {
         var normalizado = Normalizar(codigo);
         return codigosActivos.TryGetValue(normalizado, out salaId);
     }
 
+    // Libera el código solo si todavía pertenece a la misma sala.
     public void Liberar(string? codigo, Guid salaId)
     {
         if (codigo != null)
@@ -45,11 +47,13 @@ internal sealed class CodigosSala
         }
     }
 
+    // Quita espacios exteriores y unifica mayúsculas para buscar una invitación.
     public static string Normalizar(string codigo)
     {
         return codigo.Trim().ToUpperInvariant();
     }
 
+    // Elige seis símbolos con el generador criptográfico del sistema.
     private static string Generar()
     {
         var letras = new char[Longitud];

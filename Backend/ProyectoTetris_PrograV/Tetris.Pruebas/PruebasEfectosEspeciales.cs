@@ -1,6 +1,8 @@
+// Comprueba efectos, objetivos, duraciones y limpieza de los especiales.
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
 
@@ -96,6 +98,7 @@ internal static class PruebasEfectosEspeciales
                 tablero.Columna = 3;
                 tablero.PiezaEspecial = Tipo("DOBLE");
                 tablero.Lineas = 10;
+
                 for (var fila = 20 - cantidad; fila < 20; fila++)
                 {
                     for (var columna = 0; columna < 10; columna++)
@@ -249,6 +252,7 @@ internal static class PruebasEfectosEspeciales
             var (salas, motor, reloj, id) = Partida("CONFUSION");
             Caer(salas, id, 1);
             var finConfusion = salas.Obtener(id, 1).Data!.Efectos!.Single().FinUtc;
+
             for (var jugador = 2; jugador <= 4; jugador++)
             {
                 motor.Tablero!.PiezaEspecial = null;
@@ -261,6 +265,7 @@ internal static class PruebasEfectosEspeciales
             var estado = salas.Obtener(id, 1).Data!;
             Verificar(estado.Efectos!.Count(efecto => efecto.Activo && efecto.UsuarioId == 2) == 2);
             Verificar(estado.Efectos!.Single(efecto => efecto.Tipo == EfectoEspecial.Confusion).FinUtc == finConfusion);
+
             for (var jugador = 2; jugador <= 4; jugador++)
             {
                 motor.Tablero.PiezaEspecial = null;
@@ -327,8 +332,11 @@ internal static class PruebasEfectosEspeciales
         {
             var catalogo = new CatalogoFalso(Tipo("CONFUSION"), Tipo("BOMBA"));
             var salas = new SalaLJ(new MotorJuego(), new OpcionesPausa(), catalogo);
-            var datos = new TCrearSala { Modo = ModoJuego.Compartido,
-                PiezasEspeciales = new TConfiguracionPiezas { Activas = true, Probabilidad = 100, TiposPermitidos = [] } };
+            var datos = new TCrearSala
+            {
+                Modo = ModoJuego.Compartido,
+                PiezasEspeciales = new TConfiguracionPiezas { Activas = true, Probabilidad = 100, TiposPermitidos = [] }
+            };
             Verificar(!salas.Crear(1, "Uno", datos).Success);
             datos.PiezasEspeciales.TiposPermitidos = ["NO_EXISTE"];
             Verificar(!salas.Crear(1, "Uno", datos).Success);
@@ -341,15 +349,18 @@ internal static class PruebasEfectosEspeciales
         {
             var tipos = new[] { "CONFUSION", "ACELERADOR", "BOMBA", "BARREDORA", "DOBLE_PUNTUACION", "FILA", "COL" }
                 .Select(Tipo).ToArray();
+
             foreach (var porcentaje in new[] { 1, 37, 100 })
             {
                 var generador = new GeneradorPiezas(new Random(932));
                 var configuracion = new ConfiguracionPiezas(true, porcentaje, tipos);
                 var cantidades = new int[tipos.Length];
                 const int muestras = 100000;
+
                 for (var indice = 0; indice < muestras; indice++)
                 {
                     var especial = generador.SortearEspecial(configuracion);
+
                     if (especial != null)
                     {
                         cantidades[Array.IndexOf(tipos, especial)]++;
@@ -358,7 +369,10 @@ internal static class PruebasEfectosEspeciales
 
                 var esperado = muestras * porcentaje / 100.0;
                 Verificar(Math.Abs(cantidades.Sum() - esperado) < 600);
-                Verificar(cantidades.All(cantidad => Math.Abs(cantidad - esperado / tipos.Length) < Math.Max(70, esperado * 0.02)));
+                Verificar(
+                    cantidades.All(cantidad => Math.Abs(cantidad - esperado / tipos.Length) < Math.Max(70, esperado * 0.02))
+                );
+
                 if (porcentaje == 100)
                 {
                     Verificar(cantidades.Sum() == muestras);
@@ -383,6 +397,7 @@ internal static class PruebasEfectosEspeciales
         prueba("Opciones rechazan duraciones inválidas y permiten valores configurados", () =>
         {
             var rechazo = false;
+
             try
             {
                 new OpcionesEfectos { SegundosAcelerador = 0 }.Validar();
@@ -437,6 +452,7 @@ internal static class PruebasEfectosEspeciales
             Verificar(tablero.Puntuacion == 123 && tablero.Lineas == 8 && tablero.LineasUltimoEvento == 0);
             Verificar(tablero.Celdas.Length == 20 && tablero.Celdas.All(fila => fila.Length == 10));
             Verificar(tablero.Celdas.Take(10).All(fila => fila.All(celda => celda == 0)));
+
             for (var fila = 10; fila < 20; fila++)
             {
                 Verificar(tablero.Celdas[fila].SequenceEqual(inferiores[fila - 10]));
@@ -466,6 +482,7 @@ internal static class PruebasEfectosEspeciales
             var generador = new GeneradorPiezas(new Random(18));
             var desactivada = new ConfiguracionPiezas(false, 100, [Tipo("BARREDORA")]);
             var excluida = new ConfiguracionPiezas(true, 100, [Tipo("BOMBA")]);
+
             for (var indice = 0; indice < 1000; indice++)
             {
                 Verificar(generador.SortearEspecial(desactivada) == null);
@@ -504,6 +521,7 @@ internal static class PruebasEfectosEspeciales
         tablero.Fila = 18;
         tablero.Columna = 3;
         tablero.PiezaEspecial = codigo == null ? null : Tipo(codigo);
+
         for (var columna = 0; columna < 10; columna++)
         {
             tablero.Celdas[19][columna] = columna >= 3 && columna <= 6 ? 0 : 7;
@@ -516,10 +534,15 @@ internal static class PruebasEfectosEspeciales
         var reloj = new RelojEfectos();
         var motor = new MotorCapturado();
         var salas = new SalaLJ(motor, new OpcionesPausa(), new CatalogoFalso(Tipo(codigo)), reloj, opciones);
-        var creada = salas.Crear(1, "Uno", new TCrearSala { Modo = modo, PiezasNormales = ["I"],
-            PiezasEspeciales = new TConfiguracionPiezas { Activas = true, Probabilidad = 100 } });
+        var creada = salas.Crear(1, "Uno", new TCrearSala
+        {
+            Modo = modo,
+            PiezasNormales = ["I"],
+            PiezasEspeciales = new TConfiguracionPiezas { Activas = true, Probabilidad = 100 }
+        });
         Verificar(creada.Success, creada.Error ?? "No se creó la sala.");
         var id = creada.Data!.Id;
+
         for (var jugador = 1; jugador <= 4; jugador++)
         {
             if (jugador > 1)

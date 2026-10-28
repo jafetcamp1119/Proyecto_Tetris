@@ -1,9 +1,12 @@
+// Comprueba las opciones y validaciones de piezas, velocidades y puntajes.
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -142,7 +145,15 @@ internal static class PruebasConfiguracionPartida
             var unidad = new UnidadMemoria();
             unidad.TiposPiezas.Datos.AddRange(
             [
-                new TiposPieza { TipoPiezaId = 1, Codigo = "COL", Nombre = "C", EsEspecial = true, Activa = true, EliminaColumna = true },
+                new TiposPieza
+            {
+                TipoPiezaId = 1,
+                Codigo = "COL",
+                Nombre = "C",
+                EsEspecial = true,
+                Activa = true,
+                EliminaColumna = true
+            },
                 new TiposPieza { TipoPiezaId = 2, Codigo = "ELIMINA_FILA", Nombre = "F", EsEspecial = true, Activa = true }
             ]);
             var servicios = new ServiceCollection();

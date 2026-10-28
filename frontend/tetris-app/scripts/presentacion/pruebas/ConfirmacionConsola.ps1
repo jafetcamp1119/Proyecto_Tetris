@@ -1,3 +1,4 @@
+# Ejercita la confirmación heredada por el proceso PowerShell de prueba.
 param([string]$RaizRepo, [string]$ArchivoEstado)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../ConfirmacionPublicacion.ps1')

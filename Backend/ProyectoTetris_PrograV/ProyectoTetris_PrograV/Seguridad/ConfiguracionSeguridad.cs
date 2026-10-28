@@ -3,15 +3,20 @@ using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Authentication;
+
+using Dominio.InterfazLJ;
+
+using LogicaJuego.Implementacions;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+
 using Utilitarios;
-using Dominio.InterfazLJ;
-using LogicaJuego.Implementacions;
 
 namespace ProyectoTetris_PrograV.Seguridad;
 
+// Configura los orígenes permitidos y la validación de los JWT.
+// Además de la firma, comprueba que la sesión siga activa en la cuenta.
 public static class ConfiguracionSeguridad
 {
     public const string PoliticaCors = "Ionic";
@@ -23,6 +28,7 @@ public static class ConfiguracionSeguridad
     {
         var origenes = configuracion.GetSection("Cors:OrigenesPermitidos").Get<string[]>() ?? [];
         var permitirRedLocal = entorno.IsDevelopment() && configuracion.GetValue<bool>("Cors:PermitirRedLocal");
+
         if (!entorno.IsDevelopment() && (configuracion.GetValue<bool>("Cors:PermitirRedLocal") ||
             origenes.Length == 0 || origenes.Any(origen => !Uri.TryCreate(origen, UriKind.Absolute, out var uri) ||
                 uri.Scheme != "https" || !string.IsNullOrEmpty(uri.UserInfo) ||
@@ -30,7 +36,9 @@ public static class ConfiguracionSeguridad
                 (uri.IsLoopback && origen != "https://localhost") ||
                 (IPAddress.TryParse(uri.Host, out _) && origen != "https://localhost"))))
         {
-            throw new InvalidOperationException("Producción requiere orígenes CORS HTTPS explícitos. https://localhost corresponde a Capacitor Android.");
+            throw new InvalidOperationException(
+                "Producción requiere orígenes CORS HTTPS explícitos. https://localhost corresponde a Capacitor Android."
+            );
         }
 
         servicios.AddCors(cors =>
@@ -51,11 +59,13 @@ public static class ConfiguracionSeguridad
         });
     }
 
+    // Acepta un origen configurado o una dirección de red local habilitada en desarrollo.
     private static bool EsOrigenPermitido(string origen, string[] origenes, bool permitirRedLocal)
     {
         return origenes.Contains(origen) || EsOrigenDeRedLocal(origen, permitirRedLocal);
     }
 
+    // Comprueba que el origen sea HTTP o HTTPS y pertenezca a un rango IPv4 privado.
     private static bool EsOrigenDeRedLocal(string origen, bool permitirRedLocal)
     {
         if (!permitirRedLocal || !Uri.TryCreate(origen, UriKind.Absolute, out var direccion))
@@ -76,6 +86,7 @@ public static class ConfiguracionSeguridad
         return (direccion.Scheme == "http" || direccion.Scheme == "https") && (esClaseA || esClaseB || esClaseC);
     }
 
+    // Lee la configuración privada y registra JWT, recuperación, CORS y autorización.
     public static IServiceCollection AgregarSeguridad(
         this IServiceCollection servicios,
         IConfiguration configuracion,
@@ -86,7 +97,9 @@ public static class ConfiguracionSeguridad
         servicios.Configure<OpcionesGoogle>(configuracion.GetSection(OpcionesGoogle.Seccion));
         servicios.AddSingleton(opciones);
         var claveRecuperacion = configuracion["Recuperacion:Clave"];
-        servicios.AddSingleton(new ProtectorCodigosRecuperacion(string.IsNullOrWhiteSpace(claveRecuperacion) ? opciones.Clave : claveRecuperacion));
+        servicios.AddSingleton(
+            new ProtectorCodigosRecuperacion(string.IsNullOrWhiteSpace(claveRecuperacion) ? opciones.Clave : claveRecuperacion)
+        );
         servicios.AddSingleton<ServicioToken>();
         AgregarCors(servicios, configuracion, entorno);
 
@@ -98,6 +111,8 @@ public static class ConfiguracionSeguridad
         return servicios;
     }
 
+    // Comprueba clave, emisor, audiencia y duración.
+    // En desarrollo puede crear una clave temporal que cambia al reiniciar.
     private static OpcionesJwt LeerOpcionesJwt(IConfiguration configuracion, IHostEnvironment entorno)
     {
         var opciones = configuracion.GetSection("Jwt").Get<OpcionesJwt>() ?? new OpcionesJwt();
@@ -126,6 +141,7 @@ public static class ConfiguracionSeguridad
         return opciones;
     }
 
+    // Exige firma HS256, emisor, audiencia y vencimiento; no agrega tolerancia al reloj.
     private static void ConfigurarJwt(JwtBearerOptions jwt, OpcionesJwt opciones)
     {
         jwt.MapInboundClaims = false;
@@ -164,6 +180,7 @@ public static class ConfiguracionSeguridad
         return Task.CompletedTask;
     }
 
+    // Comprueba usuario y sesión en el servidor antes de autorizar el JWT recibido.
     private static Task ValidarIdentidadDelToken(TokenValidatedContext contexto)
     {
         var identificador = contexto.Principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
@@ -177,6 +194,7 @@ public static class ConfiguracionSeguridad
         var sesion = contexto.Principal?.FindFirstValue("sid");
         var acceso = contexto.HttpContext.RequestServices.GetRequiredService<IAccesoUsuarioLJ>();
         var errorSesion = Guid.TryParse(sesion, out var sesionId) ? acceso.ErrorSesion(sesionId, usuarioId) : "SesionInvalida";
+
         if (errorSesion != null)
         {
             contexto.HttpContext.Items["ErrorSesionTetris"] = errorSesion;
@@ -189,6 +207,7 @@ public static class ConfiguracionSeguridad
         return Task.CompletedTask;
     }
 
+    // Devuelve HTTP 401 con un código que permite distinguir vencimiento y reemplazo.
     private static async Task ResponderNoAutenticado(JwtBearerChallengeContext contexto)
     {
         contexto.HandleResponse();
@@ -197,10 +216,13 @@ public static class ConfiguracionSeguridad
         var vencida = contexto.AuthenticateFailure is SecurityTokenExpiredException;
         var mensaje = vencida ? "El token de acceso venció. Renová la sesión con la credencial del dispositivo."
             : "La sesión no es válida. Intentá recuperarla con la credencial del dispositivo.";
-        var codigo = vencida ? "SesionVencida" : contexto.HttpContext.Items["ErrorSesionTetris"] as string ?? "SesionInvalida";
+        var codigo = vencida
+            ? "SesionVencida"
+            : contexto.HttpContext.Items["ErrorSesionTetris"] as string ?? "SesionInvalida";
         await contexto.Response.WriteAsJsonAsync(Respuesta<object>.Fail(mensaje, codigo));
     }
 
+    // Devuelve HTTP 403 cuando el usuario autenticado no tiene permiso.
     private static async Task ResponderSinPermiso(ForbiddenContext contexto)
     {
         contexto.Response.StatusCode = StatusCodes.Status403Forbidden;

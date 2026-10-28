@@ -1,5 +1,5 @@
-// Referencia para copiar a src/app/models de tu futuro proyecto Ionic.
-// No es un proyecto frontend ni incluye pantallas.
+// Define los contratos que usan las pantallas, HTTP y SignalR de la aplicación actual.
+// Estos contratos se utilizan en las pantallas y servicios de este proyecto Ionic.
 
 export interface IRespuesta<T> {
   success: boolean;
@@ -59,8 +59,15 @@ export interface ITipoPiezaEspecial {
   eliminaFila: boolean;
 }
 
-export type EfectoEspecial = 'Ninguno' | 'EliminarFila' | 'EliminarColumna' | 'Confusion'
-  | 'Acelerador' | 'Bomba' | 'Barredora' | 'DoblePuntuacion';
+export type EfectoEspecial =
+  | 'Ninguno'
+  | 'EliminarFila'
+  | 'EliminarColumna'
+  | 'Confusion'
+  | 'Acelerador'
+  | 'Bomba'
+  | 'Barredora'
+  | 'DoblePuntuacion';
 
 export interface IEfectoTemporal {
   usuarioId: number;
@@ -226,11 +233,7 @@ export interface IPausa {
 
 // Nombres de los eventos de SignalR relacionados con la pausa. Todos reciben un IPausa.
 export type EventoPausa =
-  | 'PausaSolicitada'
-  | 'VotoPausaRegistrado'
-  | 'PausaRechazada'
-  | 'PausaIniciada'
-  | 'PausaFinalizada';
+  'PausaSolicitada' | 'VotoPausaRegistrado' | 'PausaRechazada' | 'PausaIniciada' | 'PausaFinalizada';
 
 export interface ISalaPublica {
   id: string;
@@ -243,7 +246,12 @@ export interface ISalaPublica {
 }
 
 export interface ISala {
-  progresoCompartido?: { filasNormales: number; nivel: number; progresoSiguienteNivel: number; intervaloCaidaMs: number } | null;
+  progresoCompartido?: {
+    filasNormales: number;
+    nivel: number;
+    progresoSiguienteNivel: number;
+    intervaloCaidaMs: number;
+  } | null;
   numeroRonda: number;
   // Llegan también en EstadoActualizado. Los controles se envían sin invertir desde Ionic.
   efectos: IEfectoTemporal[];
@@ -305,7 +313,6 @@ export interface IRanking {
   partidasJugadas: number;
   partidasGanadas: number;
 }
-
 
 // El estado completo y estos eventos usan el mismo salaId.
 export interface ISalaCerrada {

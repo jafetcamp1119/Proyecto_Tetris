@@ -1,11 +1,7 @@
 {
   "hosting": {
     "public": "www",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
         "regex": "^[/\\\\]privacidad([/\\\\].*)?$",
@@ -41,10 +37,10 @@
       {
         "regex": "^[/\\\\]assets[/\\\\]configuracion-publica\\.json$",
         "headers": [
-            {
-              "key": "Access-Control-Allow-Origin",
-              "value": "*"
-            },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
           {
             "key": "Cache-Control",
             "value": "no-store"
@@ -97,8 +93,6 @@
         ]
       }
     ],
-    "predeploy": [
-      "node scripts/VerificarPublicacion.cjs"
-    ]
+    "predeploy": ["node scripts/VerificarPublicacion.cjs"]
   }
 }

@@ -1,7 +1,9 @@
+// Comprueba finalización, abandono, reconexión y persistencia con datos de prueba.
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
 
@@ -182,7 +184,9 @@ internal static class PruebasDefinitivas
             unidad.Partidas.Datos.Add(new Partida { PartidaId = 1, Estado = "EnCurso" });
             unidad.Partidas.Datos.Add(new Partida { PartidaId = 2, Estado = "Finalizada", FechaFin = DateTime.UtcNow, GanadorId = 4 });
             unidad.Resultados.Datos.Add(new Resultado { PartidaId = 1, Partida = unidad.Partidas.Datos[0] });
-            unidad.Resultados.Datos.Add(new Resultado { PartidaId = 2, Partida = unidad.Partidas.Datos[1], UsuarioId = 4, EsGanador = true });
+            unidad.Resultados.Datos.Add(
+                new Resultado { PartidaId = 2, Partida = unidad.Partidas.Datos[1], UsuarioId = 4, EsGanador = true }
+            );
             var registro = new RegistroPartidaLJ(unidad);
             registro.CancelarInterrumpidasAsync().GetAwaiter().GetResult();
             registro.CancelarInterrumpidasAsync().GetAwaiter().GetResult();

@@ -1,4 +1,6 @@
+// Comparte el protector de recuperación usado por los escenarios automatizados.
 using System.Security.Cryptography;
+
 using LogicaJuego.Implementacions;
 
 internal static class CredencialesPrueba

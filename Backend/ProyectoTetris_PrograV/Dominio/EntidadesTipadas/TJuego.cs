@@ -1,105 +1,213 @@
 using System.ComponentModel.DataAnnotations;
+
 using Dominio.Juego;
 
 namespace Dominio.EntidadesTipadas;
 
+// Opciones que envía el creador; SalaLJ vuelve a validar las reglas del modo.
 public class TCrearSala
 {
     [EnumDataType(typeof(ModoJuego))]
-    public ModoJuego Modo { get; set; }
+    public ModoJuego Modo
+    {
+        get;
+            set;
+    }
 
     [Range(1, 4)]
-    public int MaximoJugadores { get; set; } = 4;
+    public int MaximoJugadores
+        {
+            get;
+            set;
+        } = 4;
 
     // true: la sala no aparece en el listado y se entra con el código de seis caracteres.
-    public bool Privada { get; set; }
+    public bool Privada
+    {
+        get;
+            set;
+    }
 
     // Apagado por omisión: solo aparecen piezas normales.
-    public TConfiguracionPiezas PiezasEspeciales { get; set; } = new TConfiguracionPiezas();
+    public TConfiguracionPiezas PiezasEspeciales
+        {
+            get;
+            set;
+        } = new TConfiguracionPiezas();
 
     // Letras de las piezas normales permitidas (I, O, T, S, Z, J, L). Sin enviar: todas.
-    public string[]? PiezasNormales { get; set; }
+    public string[]? PiezasNormales
+    {
+        get;
+            set;
+    }
 
     [EnumDataType(typeof(VelocidadInicial))]
-    public VelocidadInicial Velocidad { get; set; } = VelocidadInicial.Normal;
+    public VelocidadInicial Velocidad
+        {
+            get;
+            set;
+        } = VelocidadInicial.Normal;
 
-    public TPuntosLineas Puntos { get; set; } = new TPuntosLineas();
+    public TPuntosLineas Puntos
+        {
+            get;
+            set;
+        } = new TPuntosLineas();
 
     [Range(1, int.MaxValue)]
-    public int? MetaPuntos { get; set; }
+    public int? MetaPuntos
+    {
+        get;
+            set;
+    }
 
     [Range(1, int.MaxValue)]
-    public int? MinimoVictoriasCorona { get; set; }
+    public int? MinimoVictoriasCorona
+    {
+        get;
+            set;
+    }
 }
 
 // Cambia toda la configuración de una sala en espera (solo el creador). Lo que no se envía
 // toma su valor por omisión.
 public class TConfiguracionSala
 {
-    public TConfiguracionPiezas PiezasEspeciales { get; set; } = new TConfiguracionPiezas();
+    public TConfiguracionPiezas PiezasEspeciales
+        {
+            get;
+            set;
+        } = new TConfiguracionPiezas();
 
-    public string[]? PiezasNormales { get; set; }
+    public string[]? PiezasNormales
+    {
+        get;
+            set;
+    }
 
     [EnumDataType(typeof(VelocidadInicial))]
-    public VelocidadInicial Velocidad { get; set; } = VelocidadInicial.Normal;
+    public VelocidadInicial Velocidad
+        {
+            get;
+            set;
+        } = VelocidadInicial.Normal;
 
-    public TPuntosLineas Puntos { get; set; } = new TPuntosLineas();
+    public TPuntosLineas Puntos
+        {
+            get;
+            set;
+        } = new TPuntosLineas();
 
     [Range(1, int.MaxValue)]
-    public int? MetaPuntos { get; set; }
+    public int? MetaPuntos
+    {
+        get;
+            set;
+    }
 
     [Range(1, int.MaxValue)]
-    public int? MinimoVictoriasCorona { get; set; }
+    public int? MinimoVictoriasCorona
+    {
+        get;
+            set;
+    }
 }
 
 // Puntos base por 1, 2, 3 y 4 líneas. Después se multiplican por el nivel, como antes.
 public class TPuntosLineas
 {
     [Range(0, ConfiguracionPiezas.PuntosMaximosPorJugada)]
-    public int UnaLinea { get; set; } = 100;
+    public int UnaLinea
+        {
+            get;
+            set;
+        } = 100;
 
     [Range(0, ConfiguracionPiezas.PuntosMaximosPorJugada)]
-    public int DosLineas { get; set; } = 300;
+    public int DosLineas
+        {
+            get;
+            set;
+        } = 300;
 
     [Range(0, ConfiguracionPiezas.PuntosMaximosPorJugada)]
-    public int TresLineas { get; set; } = 500;
+    public int TresLineas
+        {
+            get;
+            set;
+        } = 500;
 
     [Range(0, ConfiguracionPiezas.PuntosMaximosPorJugada)]
-    public int CuatroLineas { get; set; } = 800;
+    public int CuatroLineas
+        {
+            get;
+            set;
+        } = 800;
 }
 
 // El cliente elige tipos activos del catálogo. El servidor valida la selección y sortea
 // cada pieza; el cliente nunca envía el resultado del sorteo ni un efecto a ejecutar.
 public class TConfiguracionPiezas
 {
-    public bool Activas { get; set; }
+    public bool Activas
+    {
+        get;
+            set;
+    }
 
     // null conserva compatibilidad: todos los tipos activos del catálogo. Vacío no es válido si Activas.
-    public string[]? TiposPermitidos { get; set; }
+    public string[]? TiposPermitidos
+    {
+        get;
+            set;
+    }
 
     // De 1 a 100 cuando Activas es true. Se ignora cuando Activas es false.
     [Range(0, 100)]
-    public int Probabilidad { get; set; }
+    public int Probabilidad
+    {
+        get;
+            set;
+    }
 }
 
+// Voto del jugador autenticado en la solicitud de pausa actual.
 public class TVotoPausa
 {
-    public bool Aceptar { get; set; }
+    public bool Aceptar
+    {
+        get;
+            set;
+    }
 }
 
+// Entrada del jugador con una secuencia creciente para evitar procesarla dos veces.
 public class TMovimiento
 {
     [EnumDataType(typeof(Movimiento))]
-    public Movimiento Movimiento { get; set; }
+    public Movimiento Movimiento
+    {
+        get;
+            set;
+    }
 
     // Un número creciente por jugador permite descartar envíos duplicados.
     [Range(1, long.MaxValue)]
-    public long Secuencia { get; set; }
+    public long Secuencia
+    {
+        get;
+            set;
+    }
 }
 
+// Coordenada de un bloque del tablero o de una pieza.
 public record TCelda(int Fila, int Columna);
+// Forma y especial de la próxima pieza autorizada para un jugador.
 public record TPiezaSiguiente(int TipoPieza, TCelda[] Celdas, string? PiezaEspecial);
+// Reserva privada identificada por jugador, sala, ronda y versión.
 public record TVistaPreviaPrivada(Guid SalaId, int UsuarioId, int NumeroRonda, long Version, TPiezaSiguiente? Pieza);
+// Copia del tablero para dibujar; no expone referencias al estado mutable del motor.
 public record TTablero(
     int? UsuarioId,
     int[][] Celdas,
@@ -121,6 +229,7 @@ public record TEventoTablero(
     string[] Sonidos,
     int LineasEliminadas,
     string? PiezaEspecial);
+// Avance del jugador, estado de conexión, secuencia aceptada y posición de la ronda.
 public record TPuntuacion(
     int UsuarioId,
     string Nombre,
@@ -137,6 +246,7 @@ public record TPuntuacion(
     int VictoriasSala = 0,
     bool Corona = false,
     bool GanoRonda = false);
+// Estado autorizado de la sala para las pantallas y SignalR; las reservas viajan por separado.
 public record TSala(
     Guid Id,
     string Codigo,
@@ -167,8 +277,10 @@ public record TSala(
     int NumeroRonda = 1,
     TProgresoCompartido? ProgresoCompartido = null);
 
+// Filas normales y velocidad del tablero común, independientes de los puntos individuales.
 public record TProgresoCompartido(int FilasNormales, int Nivel, int ProgresoSiguienteNivel, int IntervaloCaidaMs);
 
+// Ataque activo o terminado con sus fechas y motivo de finalización.
 public record TEfectoTemporal(
     int UsuarioId,
     int AtacanteId,

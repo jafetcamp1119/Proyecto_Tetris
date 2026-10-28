@@ -4,6 +4,8 @@ using Dominio.Juego;
 
 namespace LogicaJuego.Motor;
 
+// Aplica las reglas del tablero: movimientos, colisiones, fijación, filas y puntos.
+// Trabaja en el servidor y no depende de la pantalla ni de SQL Server.
 public class MotorJuego : IMotorJuego
 {
     private readonly GeneradorPiezas generador;
@@ -12,16 +14,19 @@ public class MotorJuego : IMotorJuego
     {
     }
 
+    // Permite recibir un generador controlado para probar el motor sin depender del azar.
     public MotorJuego(GeneradorPiezas generador)
     {
         this.generador = generador;
     }
 
+    // Prepara un tablero nuevo; esta sobrecarga utiliza únicamente piezas normales.
     public TableroJuego CrearTablero()
     {
         return CrearTablero(ConfiguracionPiezas.SoloNormales);
     }
 
+    // Crea un tablero con las reglas elegidas y prepara su primera pieza.
     public TableroJuego CrearTablero(ConfiguracionPiezas piezas)
     {
         var tablero = new TableroJuego();
@@ -30,6 +35,8 @@ public class MotorJuego : IMotorJuego
         return tablero;
     }
 
+    // Revisa cada bloque de la pieza propuesta. Rechaza bordes laterales, fondo y celdas ocupadas.
+    // Las filas negativas se permiten mientras la pieza entra por la parte superior.
     private static bool Cabe(TableroJuego tablero, int fila, int columna, int rotacion)
     {
         foreach (var bloque in FormasPieza.Bloques(tablero.TipoPieza, rotacion))
@@ -51,6 +58,8 @@ public class MotorJuego : IMotorJuego
         return true;
     }
 
+    // Activa la pieza ya preparada y comprueba si tiene espacio para aparecer.
+    // Si la zona está ocupada, marca el tablero como perdido.
     private void NuevaPieza(TableroJuego tablero)
     {
         tablero.PiezaSecuencia++;
@@ -69,6 +78,8 @@ public class MotorJuego : IMotorJuego
         }
     }
 
+    // Aplica un movimiento válido y devuelve si cambió el tablero o se fijó la pieza.
+    // La bajada manual suma un punto por celda y la caída rápida suma dos.
     public PasoJuego Mover(TableroJuego tablero, Movimiento movimiento)
     {
         if (tablero.Perdido || !Enum.IsDefined(movimiento))
@@ -124,6 +135,7 @@ public class MotorJuego : IMotorJuego
         }
     }
 
+    // Intenta mover la pieza horizontalmente sin atravesar bloques ni salir del tablero.
     private static PasoJuego Trasladar(TableroJuego tablero, int desplazamiento)
     {
         if (!Cabe(tablero, tablero.Fila, tablero.Columna + desplazamiento, tablero.Rotacion))
@@ -136,6 +148,7 @@ public class MotorJuego : IMotorJuego
         return new PasoJuego(true, false);
     }
 
+    // Hace descender la pieza una fila; si ya no cabe debajo, la fija en el tablero.
     public PasoJuego Avanzar(TableroJuego tablero)
     {
         if (tablero.Perdido)
@@ -152,6 +165,8 @@ public class MotorJuego : IMotorJuego
         return Fijar(tablero);
     }
 
+    // Convierte la pieza activa en bloques fijos, aplica su especial y limpia filas normales.
+    // Luego prepara la nueva pieza y registra lo ocurrido para la vista y el audio.
     private PasoJuego Fijar(TableroJuego tablero)
     {
         foreach (var bloque in FormasPieza.Bloques(tablero.TipoPieza, tablero.Rotacion))
@@ -202,6 +217,8 @@ public class MotorJuego : IMotorJuego
         return new PasoJuego(true, true);
     }
 
+    // Retira las filas llenas, baja las restantes y agrega filas vacías arriba.
+    // Suma filas y puntos con el nivel anterior; DoblePuntuacion duplica solo esos puntos.
     private static int EliminarLineasCompletas(TableroJuego tablero, EfectoEspecial efecto)
     {
         var nivelAnterior = tablero.Nivel;
@@ -302,6 +319,7 @@ public class MotorJuego : IMotorJuego
         return especial.Codigo;
     }
 
+    // Vacía la mitad superior sin bajar las otras filas ni aumentar puntos o líneas.
     internal static void BarrerMitadSuperior(int[][] celdas, List<(int Fila, int Columna)> eliminadas)
     {
         // En alturas impares la fila central queda en la mitad inferior.
@@ -316,6 +334,7 @@ public class MotorJuego : IMotorJuego
         }
     }
 
+    // Registra una celda ocupada antes de vaciarla para poder mostrar la eliminación.
     private static void VaciarCelda(TableroJuego tablero, int fila, int columna,
         List<(int Fila, int Columna)> eliminadas)
     {
@@ -332,6 +351,8 @@ public class MotorJuego : IMotorJuego
         }
     }
 
+    // Elimina la fila más baja ocupada por la pieza y baja las que estaban encima.
+    // Esta limpieza especial no suma filas normales ni puntos.
     private static void EliminarFilaEspecial(TableroJuego tablero, int filaMasBaja,
         List<(int Fila, int Columna)> eliminadas)
     {
@@ -348,6 +369,8 @@ public class MotorJuego : IMotorJuego
         tablero.Celdas[0] = new int[10];
     }
 
+    // Vacía el área de 3 por 3 alrededor del bloque inferior izquierdo de la pieza.
+    // Recorta el área en los bordes y no suma puntos por los bloques retirados.
     private static void ExplotarBomba(TableroJuego tablero, (int F, int C)[] bloques,
         List<(int Fila, int Columna)> eliminadas)
     {
@@ -365,6 +388,7 @@ public class MotorJuego : IMotorJuego
         }
     }
 
+    // Guarda el último evento con una secuencia nueva para evitar repetir sonidos.
     private static void RegistrarEvento(TableroJuego tablero, EventoSonido evento, int lineas, string? especial)
     {
         tablero.EventoSecuencia++;
@@ -373,6 +397,7 @@ public class MotorJuego : IMotorJuego
         tablero.EspecialUltimoEvento = especial;
     }
 
+    // Copia el tablero y la pieza visible en un DTO. El cliente no recibe el estado mutable.
     public TTablero ObtenerEstado(TableroJuego tablero, int? usuarioId)
     {
         var celdas = tablero.Celdas.Select(fila => fila.ToArray()).ToArray();
@@ -399,6 +424,7 @@ public class MotorJuego : IMotorJuego
             ProyectarEvento(tablero), tablero.Fila, tablero.Columna, tablero.Rotacion, tablero.PiezaSecuencia);
     }
 
+    // Convierte las marcas del motor en los nombres de eventos que reconoce el frontend.
     private static TEventoTablero? ProyectarEvento(TableroJuego tablero)
     {
         if (tablero.EventoSecuencia == 0)

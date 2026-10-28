@@ -1,9 +1,14 @@
+// Verifica acceso mediante la configuración real; no se ejecuta en la suite de memoria.
 using AccesoDatos;
 using AccesoDatos.Contexto;
+
 using AutoMapper;
+
 using Dominio.DTO;
 using Dominio.EntidadesTipadas;
+
 using LogicaJuego.Implementacions;
+
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,6 +21,7 @@ internal static class VerificacionAccesoReal
     public static async Task<int> EjecutarAsync()
     {
         var cadena = Environment.GetEnvironmentVariable("ConnectionStrings__TetrisDB");
+
         if (string.IsNullOrWhiteSpace(cadena))
         {
             throw new InvalidOperationException("Configure ConnectionStrings__TetrisDB explícitamente.");
@@ -23,7 +29,9 @@ internal static class VerificacionAccesoReal
 
         var opciones = new DbContextOptionsBuilder<TetrisDBContext>().UseSqlServer(cadena).Options;
         await using var contexto = new TetrisDBContext(opciones);
-        using var registroMensajes = LoggerFactory.Create(opcionesRegistro => { });
+        using var registroMensajes = LoggerFactory.Create(opcionesRegistro =>
+        {
+        });
         var configuracion = new MapperConfiguration(opcionesMapa => opcionesMapa.AddProfile<AutoMapperProfile>(), registroMensajes);
         var mapper = configuracion.CreateMapper();
         using var unidad = new UnidadTrabajoEF(contexto);
@@ -31,6 +39,7 @@ internal static class VerificacionAccesoReal
         var nombre = "Verificacion_" + Guid.NewGuid().ToString("N");
         var cantidadUsuarios = await contexto.Usuarios.CountAsync();
         await using var transaccion = await contexto.Database.BeginTransactionAsync();
+
         try
         {
             var registro = acceso.Registrar(new TRegistroUsuario { NombreUsuario = nombre });
@@ -39,7 +48,10 @@ internal static class VerificacionAccesoReal
             var usuario = await contexto.Usuarios.SingleAsync(jugador => jugador.UsuarioId == sesion.Usuario.UsuarioId);
             Verificar(usuario.Correo == null && usuario.PasswordHash == null, "no se inventan correos ni contraseñas");
             var duplicado = acceso.Registrar(new TRegistroUsuario { NombreUsuario = " " + nombre.ToLowerInvariant() + " " });
-            Verificar(!duplicado.Success && duplicado.CodigoError == "NombreOcupado", "C# rechaza duplicados con mayúsculas y espacios");
+            Verificar(
+                !duplicado.Success && duplicado.CodigoError == "NombreOcupado",
+                "C# rechaza duplicados con mayúsculas y espacios"
+            );
             var segundo = acceso.Registrar(new TRegistroUsuario { NombreUsuario = "Otro_" + Guid.NewGuid().ToString("N") });
             Verificar(segundo.Success, "varios usuarios pueden tener correo y contraseña NULL");
             var recuperada = acceso.Recuperar(new TRecuperarSesion { Credencial = sesion.Credencial! });
@@ -54,6 +66,7 @@ internal static class VerificacionAccesoReal
             // El espacio inicial evita que la restricción antigua del nombre oculte la nueva validación.
             var nombreDuplicado = " " + nombre.ToLowerInvariant() + " ";
             var indiceRechazoDuplicado = false;
+
             try
             {
                 await contexto.Database.ExecuteSqlInterpolatedAsync(

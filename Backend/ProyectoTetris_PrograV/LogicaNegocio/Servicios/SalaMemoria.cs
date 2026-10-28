@@ -14,6 +14,7 @@ internal sealed class JugadorSala
     public int Puntos;
     public int Lineas;
     public int Nivel = 1;
+    // Último movimiento aceptado de este jugador; permite rechazar duplicados al reconectar.
     public long Secuencia;
     public readonly HashSet<string> Conexiones = [];
     public DateTime? Desconexion;
@@ -51,6 +52,7 @@ internal sealed class SalaMemoria
     public DateTime? Inicio;
     public DateTime? Fin;
     public long Version;
+    // Cuenta cambios que necesitan persistencia; no equivale a la versión enviada a la pantalla.
     public long Revision;
     public long RevisionGuardada;
     public long SecuenciaEspecial;

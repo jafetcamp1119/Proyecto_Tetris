@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
 using Dominio.Entidades;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace AccesoDatos.Contexto;
@@ -16,43 +15,119 @@ public partial class TetrisDBContext : DbContext
     {
     }
 
-    public virtual DbSet<BloquesTablero> BloquesTableros { get; set; }
+    public virtual DbSet<BloquesTablero> BloquesTableros
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<ConexionesJugador> ConexionesJugadors { get; set; }
+    public virtual DbSet<ConexionesJugador> ConexionesJugadors
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<ConfiguracionJugador> ConfiguracionJugadors { get; set; }
+    public virtual DbSet<ConfiguracionJugador> ConfiguracionJugadors
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<EliminacionesBloque> EliminacionesBloques { get; set; }
+    public virtual DbSet<EliminacionesBloque> EliminacionesBloques
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<EstadisticasJugador> EstadisticasJugadors { get; set; }
+    public virtual DbSet<EstadisticasJugador> EstadisticasJugadors
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<EventosPartidum> EventosPartida { get; set; }
+    public virtual DbSet<EventosPartidum> EventosPartida
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<ParticipantesPartidum> ParticipantesPartida { get; set; }
+    public virtual DbSet<ParticipantesPartidum> ParticipantesPartida
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<Partida> Partidas { get; set; }
+    public virtual DbSet<Partida> Partidas
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<PausasPartidum> PausasPartida { get; set; }
+    public virtual DbSet<PausasPartidum> PausasPartida
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<Perfile> Perfiles { get; set; }
+    public virtual DbSet<Perfile> Perfiles
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<PiezasJugador> PiezasJugadors { get; set; }
+    public virtual DbSet<PiezasJugador> PiezasJugadors
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<RecompensasPunto> RecompensasPuntos { get; set; }
+    public virtual DbSet<RecompensasPunto> RecompensasPuntos
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<Resultado> Resultados { get; set; }
+    public virtual DbSet<Resultado> Resultados
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<SeleccionesRecompensa> SeleccionesRecompensas { get; set; }
+    public virtual DbSet<SeleccionesRecompensa> SeleccionesRecompensas
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<TablerosPartidum> TablerosPartida { get; set; }
+    public virtual DbSet<TablerosPartidum> TablerosPartida
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<TiposPieza> TiposPiezas { get; set; }
+    public virtual DbSet<TiposPieza> TiposPiezas
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<TurnosPartidum> TurnosPartida { get; set; }
+    public virtual DbSet<TurnosPartidum> TurnosPartida
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<Usuario> Usuarios { get; set; }
+    public virtual DbSet<Usuario> Usuarios
+    {
+        get;
+            set;
+    }
 
-    public virtual DbSet<VistaRanking> VistaRankings { get; set; }
+    public virtual DbSet<VistaRanking> VistaRankings
+    {
+        get;
+            set;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -416,6 +491,8 @@ public partial class TetrisDBContext : DbContext
 
         modelBuilder.Entity<Usuario>(entity =>
         {
+            // Estas propiedades agregadas para cuentas detectan cambios simultáneos de sesión, Google y recuperación.
+            // El resto del mapeo conserva la estructura histórica obtenida del esquema SQL.
             entity.Property(e => e.SesionActivaId).IsConcurrencyToken();
             entity.Property(e => e.GoogleSub).HasMaxLength(255).IsUnicode(false).IsConcurrencyToken();
             entity.HasIndex(e => e.GoogleSub).IsUnique().HasFilter("[GoogleSub] IS NOT NULL");

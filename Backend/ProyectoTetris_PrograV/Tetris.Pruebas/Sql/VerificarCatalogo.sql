@@ -1,3 +1,4 @@
+-- Consulta la estructura y el catálogo para la verificación SQL opcional. No se ejecuta al compilar.
 -- Ejecutar con sqlcmd desde la carpeta de la solución. Todos los cambios se revierten.
 USE [TetrisDB];
 GO

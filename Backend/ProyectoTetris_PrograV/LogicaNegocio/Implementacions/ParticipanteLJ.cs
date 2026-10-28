@@ -1,13 +1,17 @@
+using System.Linq.Expressions;
+
 using AutoMapper;
+
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazAD;
 using Dominio.InterfazLJ;
+
 using Microsoft.Extensions.Logging;
-using System.Linq.Expressions;
 
 namespace LogicaJuego.Implementacions;
 
+// Mantiene los registros de participantes de una partida mediante BaseLJ.
 public class ParticipanteLJ : BaseLJ<ParticipantesPartidum, TParticipante>, IParticipanteLJ
 {
     public ParticipanteLJ(

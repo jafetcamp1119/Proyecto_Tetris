@@ -1,11 +1,15 @@
+// Comprueba las reglas incorporadas de pausas, salas y modalidades.
 using Dominio.Entidades;
 using Dominio.EntidadesTipadas;
 using Dominio.InterfazJuego;
 using Dominio.Juego;
+
 using LogicaJuego.Motor;
 using LogicaJuego.Servicios;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+
 using Utilitarios;
 
 // Pruebas de las reglas nuevas: piezas especiales, pausas por votación y salas privadas.
@@ -628,12 +632,14 @@ internal static class PruebasReglasNuevas
             {
                 var sala = salas.Crear(i, "Jugador", new TCrearSala
                 {
-                    Modo = ModoJuego.Competitivo, Privada = i % 2 == 0
+                    Modo = ModoJuego.Competitivo,
+                    Privada = i % 2 == 0
                 }).Data!;
                 codigos.Add(sala.Codigo);
             });
             Verificar(codigos.Count == 1000 && codigos.Distinct().Count() == 1000);
         });
+
         foreach (var privada in new[] { false, true })
         {
             prueba($"Código estable al iniciar y reconectar; cierre lo invalida (privada={privada})", () =>
@@ -654,6 +660,7 @@ internal static class PruebasReglasNuevas
                 Verificar(!salas.UnirsePorCodigo(sala.Codigo, 3, "Nuevo").Success);
             });
         }
+
         prueba("Individual no genera código de invitación y conserva su identificador y juego", () =>
         {
             var salas = new SalaLJ(new MotorControlado());
@@ -798,7 +805,11 @@ sealed class CatalogoFalso : ICatalogoPiezasEspeciales
         this.tipos = tipos;
     }
 
-    public bool Fallar { get; set; }
+    public bool Fallar
+    {
+        get;
+        set;
+    }
 
     public Respuesta<TipoPiezaEspecial[]> ObtenerActivas()
     {
@@ -814,7 +825,11 @@ sealed class CatalogoFalso : ICatalogoPiezasEspeciales
 // Motor de pruebas que cuenta cuántas veces cayó una pieza por gravedad.
 sealed class MotorContador : IMotorJuego
 {
-    public int Avances { get; private set; }
+    public int Avances
+    {
+        get;
+        private set;
+    }
 
     public TableroJuego CrearTablero()
     {

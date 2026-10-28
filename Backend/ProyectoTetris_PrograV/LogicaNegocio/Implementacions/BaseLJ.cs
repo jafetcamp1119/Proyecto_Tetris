@@ -1,7 +1,11 @@
-using AutoMapper;
-using Dominio.InterfazAD;
-using Microsoft.Extensions.Logging;
 using System.Linq.Expressions;
+
+using AutoMapper;
+
+using Dominio.InterfazAD;
+
+using Microsoft.Extensions.Logging;
+
 using Utilitarios;
 
 namespace LogicaJuego.Implementacions;
@@ -23,12 +27,15 @@ public abstract class BaseLJ<TEntity, TDatos>
         this.Mapper = mapper;
     }
 
+    // Cada servicio define aquí el filtro que identifica su registro.
     protected abstract Expression<Func<TEntity, bool>> PorId(TDatos datos);
+    // Permite a cada servicio rechazar datos antes de insertar o modificar.
     protected virtual string? Validar(TDatos datos)
     {
         return null;
     }
 
+    // Captura errores de persistencia, revierte lo pendiente y devuelve un mensaje general.
     protected Respuesta<T> Ejecutar<T>(Func<Respuesta<T>> operacion)
     {
         try
@@ -43,11 +50,13 @@ public abstract class BaseLJ<TEntity, TDatos>
         }
     }
 
+    // Valida los datos, los convierte en entidad y confirma su inserción.
     public Respuesta<TDatos> Insertar(TDatos datos)
     {
         return Ejecutar(() =>
         {
             var error = Validar(datos);
+
             if (error != null)
             {
                 return Respuesta<TDatos>.Fail(error);
@@ -55,6 +64,7 @@ public abstract class BaseLJ<TEntity, TDatos>
 
             var entidad = Mapper.Map<TEntity>(datos);
             var respuesta = repositorio.Insertar(entidad);
+
             if (!respuesta.Success)
             {
                 return Respuesta<TDatos>.Fail(respuesta.Error ?? "Error al insertar.");
@@ -65,17 +75,20 @@ public abstract class BaseLJ<TEntity, TDatos>
         });
     }
 
+    // Busca el registro, copia los datos permitidos y guarda su actualización.
     public Respuesta<TDatos> Modificar(TDatos datos)
     {
         return Ejecutar(() =>
         {
             var error = Validar(datos);
+
             if (error != null)
             {
                 return Respuesta<TDatos>.Fail(error);
             }
 
             var actual = repositorio.ObtenerEntidad(PorId(datos));
+
             if (!actual.Success)
             {
                 return Respuesta<TDatos>.Fail(actual.Error ?? "Error al consultar.");
@@ -88,6 +101,7 @@ public abstract class BaseLJ<TEntity, TDatos>
 
             Mapper.Map(datos, actual.Data);
             var respuesta = repositorio.Modificar(actual.Data);
+
             if (!respuesta.Success)
             {
                 return Respuesta<TDatos>.Fail(respuesta.Error ?? "Error al modificar.");
@@ -98,11 +112,13 @@ public abstract class BaseLJ<TEntity, TDatos>
         });
     }
 
+    // Busca el registro indicado y confirma su eliminación si existe.
     public Respuesta<bool> Eliminar(TDatos datos)
     {
         return Ejecutar(() =>
         {
             var actual = repositorio.ObtenerEntidad(PorId(datos));
+
             if (!actual.Success)
             {
                 return Respuesta<bool>.Fail(actual.Error ?? "Error al consultar.");
@@ -114,6 +130,7 @@ public abstract class BaseLJ<TEntity, TDatos>
             }
 
             var respuesta = repositorio.Eliminar(actual.Data);
+
             if (!respuesta.Success)
             {
                 return respuesta;
@@ -130,6 +147,7 @@ public abstract class BaseLJ<TEntity, TDatos>
         return Ejecutar(() =>
         {
             var respuesta = repositorio.Buscar(PorId(datos));
+
             if (respuesta.Success)
             {
                 return Respuesta<IEnumerable<TDatos>>.Ok(Mapper.Map<IEnumerable<TDatos>>(respuesta.Data));
@@ -139,11 +157,13 @@ public abstract class BaseLJ<TEntity, TDatos>
         });
     }
 
+    // Devuelve un DTO del registro encontrado por su identificador.
     public Respuesta<TDatos> Buscar(TDatos datos)
     {
         return Ejecutar(() =>
         {
             var respuesta = repositorio.ObtenerEntidad(PorId(datos));
+
             if (!respuesta.Success)
             {
                 return Respuesta<TDatos>.Fail(respuesta.Error ?? "Error al consultar.");
@@ -158,11 +178,13 @@ public abstract class BaseLJ<TEntity, TDatos>
         });
     }
 
+    // Convierte la colección del repositorio en datos para los clientes del servicio.
     public Respuesta<IEnumerable<TDatos>> Listar()
     {
         return Ejecutar(() =>
         {
             var respuesta = repositorio.Listar();
+
             if (respuesta.Success)
             {
                 return Respuesta<IEnumerable<TDatos>>.Ok(Mapper.Map<IEnumerable<TDatos>>(respuesta.Data));

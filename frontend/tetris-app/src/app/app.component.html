@@ -1,7 +1,13 @@
+<!-- Contenedor de navegación y avisos globales que permanecen entre las pantallas. -->
 <ion-app>
-  <ion-router-outlet [style.visibility]="vigilancia.cerrando() ? 'hidden' : null" [attr.inert]="orientacion.requiereVertical() || vigilancia.cerrando() ? '' : null" [attr.aria-hidden]="orientacion.requiereVertical() || vigilancia.cerrando() ? 'true' : null"></ion-router-outlet>
+  <ion-router-outlet
+    [style.visibility]="vigilancia.cerrando() ? 'hidden' : null"
+    [attr.inert]="orientacion.requiereVertical() || vigilancia.cerrando() ? '' : null"
+    [attr.aria-hidden]="orientacion.requiereVertical() || vigilancia.cerrando() ? 'true' : null"
+  ></ion-router-outlet>
   @if (vigilancia.mensajeConexion()) {
-    <aside class="aviso-conexion tarjeta-tetris" role="status">{{ vigilancia.mensajeConexion() }}
+    <aside class="aviso-conexion tarjeta-tetris" role="status"
+      >{{ vigilancia.mensajeConexion() }}
       <button class="accion secundaria" (click)="verificarSesion()">Reintentar</button>
     </aside>
   }

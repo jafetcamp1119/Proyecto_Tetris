@@ -1,3 +1,5 @@
+-- Agrega el identificador de sesión activa y la huella pendiente de recuperación.
+-- El índice filtrado evita repetir una huella pendiente sin impedir varios valores null.
 -- Aplicar manualmente SOLO con autorizacion y copia de seguridad. No modifica cuentas existentes.
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;

@@ -3,15 +3,54 @@ namespace Dominio.Juego;
 // Estado mutable exclusivo del motor. No es una entidad de EF ni un control visual.
 public sealed class TableroJuego
 {
-    public int[][] Celdas { get; } = Enumerable.Range(0, 20).Select(_ => new int[10]).ToArray();
-    public int TipoPieza { get; internal set; }
-    public int Rotacion { get; internal set; }
-    public int Fila { get; internal set; }
-    public int Columna { get; internal set; }
-    public long PiezaSecuencia { get; internal set; }
-    public int Puntuacion { get; internal set; }
-    public int Lineas { get; internal set; }
+    public int[][] Celdas
+        {
+            get;
+        } = Enumerable.Range(0, 20).Select(_ => new int[10]).ToArray();
 
+    public int TipoPieza
+    {
+        get;
+            internal set;
+    }
+
+    public int Rotacion
+    {
+        get;
+            internal set;
+    }
+
+    public int Fila
+    {
+        get;
+            internal set;
+    }
+
+    public int Columna
+    {
+        get;
+            internal set;
+    }
+    // Identifica cada pieza activa para descartar predicciones de una pieza anterior.
+    public long PiezaSecuencia
+    {
+        get;
+            internal set;
+    }
+
+    public int Puntuacion
+    {
+        get;
+            internal set;
+    }
+
+    public int Lineas
+    {
+        get;
+            internal set;
+    }
+
+    // Cada diez filas normales acumuladas sube un nivel.
     public int Nivel
     {
         get
@@ -20,34 +59,83 @@ public sealed class TableroJuego
         }
     }
 
-    public bool Perdido { get; internal set; }
+    public bool Perdido
+    {
+        get;
+            internal set;
+    }
+    // Acelera 60 ms por nivel y conserva un mínimo de 100 ms entre descensos.
     public int IntervaloCaidaMs
     {
-        get { return Math.Max(100, Piezas.IntervaloBaseMs - (Nivel - 1) * 60); }
+        get
+        {
+            return Math.Max(100, Piezas.IntervaloBaseMs - (Nivel - 1) * 60);
+        }
     }
 
-    public bool EsCompartido { get; internal set; }
+    public bool EsCompartido
+    {
+        get;
+            internal set;
+    }
 
     // Reglas de piezas especiales de esta partida y tipo especial de la pieza activa (null si es normal).
     // Se guardan en el tablero para que una reconexión no vuelva a sortear la pieza.
-    public ConfiguracionPiezas Piezas { get; internal set; } = ConfiguracionPiezas.SoloNormales;
+    public ConfiguracionPiezas Piezas
+        {
+            get;
+            internal set;
+        } = ConfiguracionPiezas.SoloNormales;
 
-    public TipoPiezaEspecial? PiezaEspecial { get; internal set; }
-    public PiezaPreparada? SiguientePieza { get; internal set; }
+    public TipoPiezaEspecial? PiezaEspecial
+    {
+        get;
+            internal set;
+    }
+
+    public PiezaPreparada? SiguientePieza
+    {
+        get;
+            internal set;
+    }
 
     // Qué ocurrió en la última acción del motor. El cliente lo usa para reproducir sonidos;
     // la secuencia sube con cada acción para que un mismo evento no se reproduzca dos veces.
-    public long EventoSecuencia { get; internal set; }
+    public long EventoSecuencia
+    {
+        get;
+            internal set;
+    }
 
-    public EventoSonido UltimoEvento { get; internal set; }
+    public EventoSonido UltimoEvento
+    {
+        get;
+            internal set;
+    }
 
-    public int LineasUltimoEvento { get; internal set; }
+    public int LineasUltimoEvento
+    {
+        get;
+            internal set;
+    }
 
-    public string? EspecialUltimoEvento { get; internal set; }
+    public string? EspecialUltimoEvento
+    {
+        get;
+            internal set;
+    }
 
-    public EfectoEspecial EfectoUltimoEvento { get; internal set; }
+    public EfectoEspecial EfectoUltimoEvento
+    {
+        get;
+            internal set;
+    }
 
-    public (int Fila, int Columna)[] CeldasEliminadasEspecial { get; internal set; } = [];
+    public (int Fila, int Columna)[] CeldasEliminadasEspecial
+        {
+            get;
+            internal set;
+        } = [];
 }
 
 // Hechos de una acción del motor que el frontend puede acompañar con un sonido.

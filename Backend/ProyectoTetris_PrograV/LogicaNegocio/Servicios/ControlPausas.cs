@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+
 using Dominio.EntidadesTipadas;
 using Dominio.Juego;
 
@@ -23,11 +24,13 @@ internal sealed class ControlPausas
         this.proyector = proyector;
     }
 
+    // Consulta si la sala está en la fase que detiene los movimientos.
     public bool EstaPausada(SalaMemoria sala)
     {
         return sala.Pausa.Fase == FasePausa.Pausada;
     }
 
+    // Valida al jugador y decide entre pausa individual o votación multijugador.
     public string? Solicitar(SalaMemoria sala, JugadorSala jugador, DateTime ahora)
     {
         if (sala.Estado != EstadoSala.EnCurso)
@@ -43,6 +46,7 @@ internal sealed class ControlPausas
         return AbrirVotacion(sala, jugador, ahora);
     }
 
+    // Pasa el voto a las reglas de pausa y revisa si ya se puede resolver.
     public string? Votar(SalaMemoria sala, JugadorSala jugador, bool aceptar, DateTime ahora)
     {
         var error = sala.Pausa.Votar(jugador.Id, aceptar, sala.JugadoresHabilitados(), ahora);
@@ -58,6 +62,7 @@ internal sealed class ControlPausas
         return null;
     }
 
+    // Reanuda únicamente el modo individual y devuelve un error si no corresponde.
     public string? ReanudarIndividual(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Modo != ModoJuego.Individual)
@@ -75,6 +80,7 @@ internal sealed class ControlPausas
     }
 
     // Se llama en cada tick del reloj: cierra votaciones vencidas y reanuda pausas que cumplieron su tiempo.
+    // Resuelve votaciones y pausas cuyo plazo se cumplió usando la hora del servidor.
     public void Actualizar(SalaMemoria sala, DateTime ahora)
     {
         if (sala.Pausa.Fase == FasePausa.Votando)
@@ -88,6 +94,7 @@ internal sealed class ControlPausas
     }
 
     // Si la partida termina mientras hay una votación o una pausa, se cierran sin más trámite.
+    // Cancela la votación o pausa cuando la sala deja de estar en curso.
     public void CancelarSiTermino(SalaMemoria sala, DateTime ahora)
     {
         var habiaPausa = sala.Pausa.Fase != FasePausa.Ninguna;
@@ -101,6 +108,7 @@ internal sealed class ControlPausas
         Encolar(EventoFinalizada, sala, ahora, "La partida terminó.");
     }
 
+    // Entrega y vacía la cola de avisos de pausa para publicarlos por SignalR.
     public TEventoSala[] TomarEventos()
     {
         var pendientes = new List<TEventoSala>();
@@ -113,6 +121,7 @@ internal sealed class ControlPausas
         return pendientes.ToArray();
     }
 
+    // Detiene la partida individual sin votación ni duración máxima.
     private string? PausarIndividual(SalaMemoria sala, JugadorSala jugador, DateTime ahora)
     {
         if (EstaPausada(sala))
@@ -126,6 +135,7 @@ internal sealed class ControlPausas
         return null;
     }
 
+    // Reúne a los jugadores habilitados y abre la solicitud de pausa.
     private string? AbrirVotacion(SalaMemoria sala, JugadorSala jugador, DateTime ahora)
     {
         var error = sala.Pausa.Solicitar(jugador.Id, sala.JugadoresHabilitados(), ahora);
@@ -141,6 +151,7 @@ internal sealed class ControlPausas
         return null;
     }
 
+    // Evalúa los votos y prepara el aviso de aprobación, rechazo o vencimiento.
     private void ResolverVotacion(SalaMemoria sala, DateTime ahora)
     {
         var solicitante = sala.Jugadores.Find(j => j.Id == sala.Pausa.SolicitanteId)?.Nombre;
@@ -159,6 +170,7 @@ internal sealed class ControlPausas
         }
     }
 
+    // Cierra la pausa y desplaza los relojes por el tiempo que estuvo detenida.
     private void Reanudar(SalaMemoria sala, DateTime ahora, string detalle)
     {
         var duracion = sala.Pausa.Reanudar(ahora);
@@ -168,6 +180,7 @@ internal sealed class ControlPausas
     }
 
     // La caída no acumula tiempo en pausa. La reconexión usa siempre 30 segundos reales.
+    // Desplaza las fechas de caída y los efectos temporales para conservar sus plazos al reanudar.
     private void DesplazarTemporizadores(SalaMemoria sala, TimeSpan duracion)
     {
         sala.UltimaCaida = sala.UltimaCaida.Add(duracion);
@@ -175,18 +188,23 @@ internal sealed class ControlPausas
         foreach (var jugador in sala.Jugadores)
         {
             jugador.UltimaCaida = jugador.UltimaCaida.Add(duracion);
+
             for (var indice = 0; indice < jugador.Efectos.Count; indice++)
             {
                 var efecto = jugador.Efectos[indice];
 
                 if (efecto.Activo)
                 {
-                    jugador.Efectos[indice] = efecto with { FinUtc = efecto.FinUtc.Add(duracion) };
+                    jugador.Efectos[indice] = efecto with
+                    {
+                        FinUtc = efecto.FinUtc.Add(duracion)
+                    };
                 }
             }
         }
     }
 
+    // Prepara un evento con el estado de pausa que recibirán los participantes.
     private void Encolar(string nombre, SalaMemoria sala, DateTime ahora, string detalle)
     {
         var datos = proyector.Pausa(sala, ahora, detalle);

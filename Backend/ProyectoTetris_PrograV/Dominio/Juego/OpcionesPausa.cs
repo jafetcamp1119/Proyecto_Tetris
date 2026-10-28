@@ -5,11 +5,23 @@ namespace Dominio.Juego;
 public class OpcionesPausa
 {
     // Tiempo máximo para votar una solicitud de pausa.
-    public int SegundosVotacion { get; set; } = 15;
+    public int SegundosVotacion
+        {
+            get;
+            set;
+        } = 15;
 
     // Duración máxima de una pausa aprobada; después la partida se reanuda sola.
-    public int SegundosPausa { get; set; } = 180;
+    public int SegundosPausa
+        {
+            get;
+            set;
+        } = 180;
 
     // Solicitudes de pausa que puede hacer cada jugador durante una partida multijugador.
-    public int SolicitudesPorJugador { get; set; } = 1;
+    public int SolicitudesPorJugador
+        {
+            get;
+            set;
+        } = 1;
 }
